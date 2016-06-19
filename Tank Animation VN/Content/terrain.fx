@@ -13,8 +13,10 @@ float4 ambientLightColor;
 float ambientLightLevel;
 
 float maxElevation;
-float trans1 = 0.50;
-float trans2 = 0.75;
+float trans1 = 0.10;
+float trans2 = 0.25;
+//float trans1 = 0.50;
+//float trans2 = 0.75;
 
 sampler2D textureSampler = sampler_state {
 	Texture = (terrainTexture1);
@@ -73,7 +75,8 @@ float4 pixelColor = lowColor;
 if ((elevation >= trans1 - 0.05) && (elevation <= trans1 +
 	0.05))
 {
-	float transWeight = ((trans1 + 0.05) - elevation) / 0.10;
+	//float transWeight = ((trans1 + 0.05) - elevation) / 0.10;
+	float transWeight = ((trans1 + 0.05) - elevation) / 0.9;
 	pixelColor = lowColor * transWeight;
 	pixelColor += midColor * (1 - transWeight);
 }
