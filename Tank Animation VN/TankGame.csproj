@@ -41,6 +41,7 @@
     <Compile Include="Camera.cs" />
     <Compile Include="CModel.cs" />
     <Compile Include="FreeCamera.cs" />
+    <Compile Include="SFXManager.cs" />
     <Compile Include="TankGame.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

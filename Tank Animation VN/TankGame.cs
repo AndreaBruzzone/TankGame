@@ -1,6 +1,7 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using Microsoft.Xna.Framework.Audio;
 using System;
 
 namespace TankAnimationVN
@@ -37,6 +38,7 @@ namespace TankAnimationVN
         bool obstacleBackward = false;
 
         bool bulletExpired = false;
+        bool bulletLock = false;
 
         Terrain terrain;
         Effect effect;
@@ -60,7 +62,7 @@ namespace TankAnimationVN
 
         protected override void Initialize()
         {
-            BulletTime = new TimeClass(1);
+            BulletTime = new TimeClass(3000);
 
             base.Initialize();
         }
@@ -86,6 +88,11 @@ namespace TankAnimationVN
                                  new Quaternion(), new Vector3(0.001f, 0.001f, 0.001f), GraphicsDevice);
 
             camera = new FreeCamera(new Vector3(11, terrain.GetHeight(11, 61)+2, 61), -20f, 0f, GraphicsDevice);
+
+            SFXManager.AddEffect("Explosion", Content.Load<SoundEffect>("Explosion1"));
+            SFXManager.AddEffect("Jump", Content.Load<SoundEffect>("Jump"));
+            SFXManager.AddEffect("PlayerShot", Content.Load<SoundEffect>("Shot1"));
+            SFXManager.AddEffect("EnemyShot", Content.Load<SoundEffect>("Shot2"));
 
             LastMouseState = Mouse.GetState();
         }
@@ -208,7 +215,7 @@ namespace TankAnimationVN
                     CmodelTransform.Decompose(out scale, out rotation, out translation);
                     Vector3 CmodelForward = Vector3.Transform(Vector3.UnitZ, rotation);
 
-                    Vector3 newPos = Cmodel.Position + translation - CmodelForward * 0.003f;
+                    Vector3 newPos = Cmodel.Position + translation - CmodelForward * 0.03f;
 
                     if (Math.Abs((terrain.GetHeight(Cmodel.Position.X - 3f, Cmodel.Position.Z - 3f)) - newPos.Y) <= 1000000f)
                     {
@@ -217,7 +224,7 @@ namespace TankAnimationVN
                         Cmodel.BoneTransform(4, Matrix.CreateRotationX(wheelRot));
                         Cmodel.BoneTransform(6, Matrix.CreateRotationX(wheelRot));
                         Cmodel.BoneTransform(8, Matrix.CreateRotationX(wheelRot));
-                        Cmodel.Position += translation - CmodelForward * 0.003f;
+                        Cmodel.Position += translation - CmodelForward * 0.03f;
                         Cmodel.Position = new Vector3(Cmodel.Position.X, terrain.GetHeight(Cmodel.Position.X, Cmodel.Position.Z), Cmodel.Position.Z);              
                     }
                     else
@@ -241,7 +248,7 @@ namespace TankAnimationVN
                     CmodelTransform.Decompose(out scale, out rotation, out translation);
                     Vector3 CmodelForward = Vector3.Transform(Vector3.UnitZ, rotation);
 
-                    Vector3 newPos = Cmodel.Position + translation + CmodelForward * 0.003f;
+                    Vector3 newPos = Cmodel.Position + translation + CmodelForward * 0.03f;
 
                     if (Math.Abs((terrain.GetHeight(Cmodel.Position.X + 3f, Cmodel.Position.Z + 3f)) - newPos.Y) <= 100000000f)
                     {
@@ -250,7 +257,7 @@ namespace TankAnimationVN
                         Cmodel.BoneTransform(4, Matrix.CreateRotationX(wheelRot));
                         Cmodel.BoneTransform(6, Matrix.CreateRotationX(wheelRot));
                         Cmodel.BoneTransform(8, Matrix.CreateRotationX(wheelRot));
-                        Cmodel.Position += translation + CmodelForward * 0.003f;
+                        Cmodel.Position += translation + CmodelForward * 0.03f;
                         Cmodel.Position = new Vector3(Cmodel.Position.X, terrain.GetHeight(Cmodel.Position.X, Cmodel.Position.Z), Cmodel.Position.Z);
                     }
                     else
@@ -261,29 +268,32 @@ namespace TankAnimationVN
 
             if (KState.IsKeyDown(Keys.F))
             {
-                BulletFired = true;
+                if (bulletLock == false)
+                {
+                    bulletLock = true;
+                    BulletFired = true;
+                    SFXManager.Play("PlayerShot");
 
-                Vector3 scale;
-                Quaternion rotation;
-                Vector3 translation;
-                CanonRelTransform = GetTransformPaths(Cmodel.Model.Bones[10]);
-                CanonRelTransform.Decompose(out scale, out rotation, out translation);
+                    Vector3 scale;
+                    Quaternion rotation;
+                    Vector3 translation;
+                    CanonRelTransform = GetTransformPaths(Cmodel.Model.Bones[10]);
+                    CanonRelTransform.Decompose(out scale, out rotation, out translation);
 
-                bulletForward = Vector3.Transform(Vector3.UnitZ, rotation);
-                
-                BulletModel.Position = Cmodel.Position + translation * new Vector3(0.001f,0.001f,0.001f) + bulletForward * 0.04f;
-                BulletModel.Rotation = rotation;
+                    bulletForward = Vector3.Transform(Vector3.UnitZ, rotation);
 
-                BulletTime.Start();
+                    BulletModel.Position = Cmodel.Position + translation * new Vector3(0.001f, 0.001f, 0.001f) + bulletForward * 0.04f;
+                    BulletModel.Rotation = rotation;
 
-
-
+                    BulletTime.Start();
+                }
             }
+
             if (BulletFired)
             {
-                if (BulletModel.Position.Y > 0.33f)
+                if (BulletModel.Position.Y > terrain.GetHeight(BulletModel.Position.X, BulletModel.Position.Z))
                 {
-                    BulletModel.Position += bulletForward * 0.02f - 0.0005f * Vector3.UnitY;
+                    BulletModel.Position += bulletForward * 0.2f - 0.0005f * Vector3.UnitY;
                 }
                 else
                 {
@@ -294,7 +304,22 @@ namespace TankAnimationVN
                     CanonRelTransform.Decompose(out scale, out rotation, out translation);
                     bulletForward = Vector3.Transform(Vector3.UnitZ, rotation);
                     BulletModel.Position = Cmodel.Position + translation * new Vector3(0.01f, 0.01f, 0.01f) + bulletForward * 0.04f;
+                    SFXManager.Play("Explosion");
                     bulletExpired = true;
+                    bulletLock = false;
+                    BulletFired = false;
+                }
+                if (BulletTime.IsTimeEspired(gameTime))
+                {
+                    Vector3 scale;
+                    Quaternion rotation;
+                    Vector3 translation;
+                    CanonRelTransform = GetTransformPaths(Cmodel.Model.Bones[10]);
+                    CanonRelTransform.Decompose(out scale, out rotation, out translation);
+                    bulletForward = Vector3.Transform(Vector3.UnitZ, rotation);
+                    BulletModel.Position = Cmodel.Position + translation * new Vector3(0.01f, 0.01f, 0.01f) + bulletForward * 0.04f;
+                    bulletExpired = true;
+                    bulletLock = false;
                     BulletFired = false;
                 }
             }
