@@ -94,6 +94,8 @@ namespace TankAnimationVN
             SFXManager.AddEffect("PlayerShot", Content.Load<SoundEffect>("Shot1"));
             SFXManager.AddEffect("EnemyShot", Content.Load<SoundEffect>("Shot2"));
 
+            ParticleManager.Initialize(GraphicsDevice,Content.Load<Effect>("Particles"),Content.Load<Texture2D>("Explosion"));
+
             LastMouseState = Mouse.GetState();
         }
 
@@ -297,6 +299,7 @@ namespace TankAnimationVN
                 }
                 else
                 {
+                    MakeExplosion();
                     Vector3 scale;
                     Quaternion rotation;
                     Vector3 translation;
@@ -361,6 +364,7 @@ namespace TankAnimationVN
            
 
             camera.Update();
+            ParticleManager.Update(gameTime);
 
             LastMouseState = Mouse.GetState();
         }
@@ -397,8 +401,16 @@ namespace TankAnimationVN
             Cmodel.Draw(camera.view, camera.projection);
 
             terrain.Draw(camera, effect);
-
+            ParticleManager.Draw((FreeCamera)camera);
             base.Draw(gameTime);
         }
+        private void MakeExplosion()
+        {
+            Vector3 impactPoint = new Vector3(
+            BulletModel.Position.X, 0, BulletModel.Position.Z);
+            impactPoint.Y = terrain.GetHeight(
+            impactPoint.X, impactPoint.Z);
+            ParticleManager.MakeExplosion(impactPoint, 200);
+        }   
     }
 }

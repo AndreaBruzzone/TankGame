@@ -41,6 +41,8 @@
     <Compile Include="Camera.cs" />
     <Compile Include="CModel.cs" />
     <Compile Include="FreeCamera.cs" />
+    <Compile Include="Particle.cs" />
+    <Compile Include="ParticleManager.cs" />
     <Compile Include="SFXManager.cs" />
     <Compile Include="TankGame.cs" />
     <Compile Include="Program.cs" />
@@ -57,6 +59,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Content\Particles.fx" />
     <Content Include="Content\terrain.fx" />
     <Content Include="Icon.ico" />
   </ItemGroup>
