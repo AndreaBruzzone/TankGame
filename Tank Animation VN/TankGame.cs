@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Audio;
 using System;
+using System.Collections.Generic;
 
 namespace TankAnimationVN
 {
@@ -15,17 +16,13 @@ namespace TankAnimationVN
         SpriteBatch spriteBatch;
         SpriteFont SFont;
 
-        Texture2D[] skyboxTextures;
-        Model skyboxModel;
+        List<Tank> TankList = new List<Tank>();
+        Tank Cmodel, Enemy;
 
-        CModel Cmodel, BulletModel, ShTarget1, ShTarget2, ShTarget3, CPlane;
         Camera camera;
         MouseState LastMouseState;
         bool FirstRun = true;
-        TimeClass BulletTime;
-        BasicEffect beffect;
 
-        bool BulletFired = false;
         Vector3 forward = new Vector3(0, 0, 0);
 
         float canonRot = 0;
@@ -34,36 +31,23 @@ namespace TankAnimationVN
         float steelRot = 0;
         float BodyRot = 0;
 
-        bool obstacleForward = false;
-        bool obstacleBackward = false;
+        float enemyRot = 0;
 
-        bool bulletExpired = false;
-        bool bulletLock = false;
+        bool enableEnemyFiring = false;
 
         Terrain terrain;
         Effect effect;
 
-        Matrix CanonRelTransform, CmodelTransform;
-        Vector3 bulletForward;
-
-        //forze
-        Vector3 vel = new Vector3(0, 0, 0);
+        Matrix CmodelTransform;
 
         public Game1()
         {
             graphics = new GraphicsDeviceManager(this);
-            //graphics.PreparingDeviceSettings += new EventHandler<PreparingDeviceSettingsEventArgs>(graphics_PreparingDeviceSettings);
             Content.RootDirectory = "Content";
         }
-        //void graphics_PreparingDeviceSettings(object sender, PreparingDeviceSettingsEventArgs e)
-        //{
-        //    e.GraphicsDeviceInformation.GraphicsProfile = GraphicsProfile.HiDef;
-        //}
 
         protected override void Initialize()
         {
-            BulletTime = new TimeClass(3000);
-
             base.Initialize();
         }
 
@@ -73,82 +57,44 @@ namespace TankAnimationVN
             // Create a new SpriteBatch, which can be used to draw textures.
             spriteBatch = new SpriteBatch(GraphicsDevice);
 
-            effect = Content.Load<Effect>("terrain");   
+            effect = Content.Load<Effect>("terrain");
 
             this.IsMouseVisible = true;
 
             SFont = Content.Load<SpriteFont>("SpriteFont");
-               
+
             terrain = new Terrain(GraphicsDevice, Content.Load<Texture2D>("desert"), Content.Load<Texture2D>("water"), Content.Load<Texture2D>("sand"), Content.Load<Texture2D>("vetta"), 1f, 128, 128, 5f);
 
-            Cmodel = new CModel(Content.Load<Model>("tank"), new Vector3(50, terrain.GetHeight(50, 61), 61),
+            Cmodel = new Tank(Content.Load<Model>("tank"), new Vector3(50, terrain.GetHeight(50, 61), 61),
                                 new Quaternion(), new Vector3(0.001f, 0.001f, 0.001f), GraphicsDevice);
+
+            Enemy = new Tank(Content.Load<Model>("enemy"), new Vector3(53, terrain.GetHeight(53, 61), 61),
+                                new Quaternion(), new Vector3(0.001f, 0.001f, 0.001f), GraphicsDevice);
+
             var BulletTranslation = GetTransformPaths(Cmodel.Model.Bones[10]);
-            BulletModel = new CModel(Content.Load<Model>("Bullet"), BulletTranslation.Translation,
+            var EnemyBulletTranslation = GetTransformPaths(Enemy.Model.Bones[10]);
+
+            Cmodel.Bullet = new Bullet(Content.Load<Model>("Bullet"), BulletTranslation.Translation,
+                                 new Quaternion(), new Vector3(0.001f, 0.001f, 0.001f), GraphicsDevice);
+            Enemy.Bullet = new Bullet(Content.Load<Model>("Bullet"), BulletTranslation.Translation,
                                  new Quaternion(), new Vector3(0.001f, 0.001f, 0.001f), GraphicsDevice);
 
-            camera = new FreeCamera(new Vector3(11, terrain.GetHeight(11, 61)+2, 61), -20f, 0f, GraphicsDevice);
+            TankList.Add(Cmodel);
+            TankList.Add(Enemy);
+
+            camera = new FreeCamera(new Vector3(11, terrain.GetHeight(11, 61) + 2, 61), -20f, 0f, GraphicsDevice);
 
             SFXManager.AddEffect("Explosion", Content.Load<SoundEffect>("Explosion1"));
             SFXManager.AddEffect("Jump", Content.Load<SoundEffect>("Jump"));
             SFXManager.AddEffect("PlayerShot", Content.Load<SoundEffect>("Shot1"));
             SFXManager.AddEffect("EnemyShot", Content.Load<SoundEffect>("Shot2"));
 
-            ParticleManager.Initialize(GraphicsDevice,Content.Load<Effect>("Particles"),Content.Load<Texture2D>("Explosion"));
+            ParticleManager.Initialize(GraphicsDevice, Content.Load<Effect>("Particles"), Content.Load<Texture2D>("Explosion"));
 
             LastMouseState = Mouse.GetState();
         }
 
-        private void DrawSkybox()
-        {
-            SamplerState ss = new SamplerState();
-            ss.AddressU = TextureAddressMode.Clamp;
-            ss.AddressV = TextureAddressMode.Clamp;
-            GraphicsDevice.SamplerStates[0] = ss;
-            
-            DepthStencilState dss = new DepthStencilState();
-            dss.DepthBufferEnable = false;
-            GraphicsDevice.DepthStencilState = dss;
-
-            Matrix[] skyboxTransforms = new Matrix[skyboxModel.Bones.Count];
-            skyboxModel.CopyAbsoluteBoneTransformsTo(skyboxTransforms);
-            int i = 0;
-            foreach (ModelMesh mesh in skyboxModel.Meshes)
-            {
-                foreach (Effect currentEffect in mesh.Effects)
-                {
-                    Matrix worldMatrix = skyboxTransforms[mesh.ParentBone.Index] * Matrix.CreateTranslation(Cmodel.Position);
-                    currentEffect.CurrentTechnique = currentEffect.Techniques["Textured"];
-                    currentEffect.Parameters["xWorld"].SetValue(worldMatrix);
-                    currentEffect.Parameters["xView"].SetValue(camera.view);
-                    currentEffect.Parameters["xProjection"].SetValue(camera.projection);
-                    currentEffect.Parameters["xTexture"].SetValue(skyboxTextures[i++]);
-                }
-                mesh.Draw();
-            }
-
-            dss = new DepthStencilState();
-            dss.DepthBufferEnable = true;
-            GraphicsDevice.DepthStencilState = dss;
-        }
-
-        private Matrix GetTransformPaths(ModelBone bone)
-        {
-            Matrix result = Matrix.Identity;
-            while (bone != null)
-            {
-                result = result * bone.Transform;
-                bone = bone.Parent;
-            }
-            return result;
-
-        }
-
-        protected override void UnloadContent()
-        {
-            // TODO: Unload any non ContentManager content here
-        }
-
+        protected override void UnloadContent() { }
         protected override void Update(GameTime gameTime)
         {
             var delta = (float)gameTime.ElapsedGameTime.TotalSeconds;
@@ -184,8 +130,7 @@ namespace TankAnimationVN
                 turretRot -= 0.05f;
                 Cmodel.BoneTransform(9, Matrix.CreateRotationY(turretRot));
             }
-            if (!obstacleForward & !obstacleBackward)
-            {
+           
                 if (KState.IsKeyDown(Keys.Left))
                 {
                     steelRot += 0.05f;
@@ -202,128 +147,79 @@ namespace TankAnimationVN
                     Cmodel.BoneTransform(3, Matrix.CreateRotationY(steelRot));
                     Cmodel.BoneTransform(7, Matrix.CreateRotationY(steelRot));
                 }
-            }
+
             if (KState.IsKeyDown(Keys.Down))
             {
-                if(!obstacleBackward)
-                {
-                    obstacleForward = false;
-                    BodyRot -= delta * steelRot;
-                    Cmodel.BoneTransform(0, Matrix.CreateRotationY(BodyRot));
-                    CmodelTransform = GetTransformPaths(Cmodel.Model.Bones[0]);
-                    Vector3 scale;
-                    Quaternion rotation;
-                    Vector3 translation;
-                    CmodelTransform.Decompose(out scale, out rotation, out translation);
-                    Vector3 CmodelForward = Vector3.Transform(Vector3.UnitZ, rotation);
+                BodyRot -= delta * steelRot;
+                Cmodel.BoneTransform(0, Matrix.CreateRotationY(BodyRot));
+                CmodelTransform = GetTransformPaths(Cmodel.Model.Bones[0]);
+                Vector3 scale;
+                Quaternion rotation;
+                Vector3 translation;
+                CmodelTransform.Decompose(out scale, out rotation, out translation);
+                Vector3 CmodelForward = Vector3.Transform(Vector3.UnitZ, rotation);
 
-                    Vector3 newPos = Cmodel.Position + translation - CmodelForward * 0.03f;
+                Vector3 newPos = Cmodel.Position + translation - CmodelForward * 0.03f;
 
-                    if (Math.Abs((terrain.GetHeight(Cmodel.Position.X - 3f, Cmodel.Position.Z - 3f)) - newPos.Y) <= 1000000f)
-                    {
-                        wheelRot -= 0.05f;
-                        Cmodel.BoneTransform(2, Matrix.CreateRotationX(wheelRot));
-                        Cmodel.BoneTransform(4, Matrix.CreateRotationX(wheelRot));
-                        Cmodel.BoneTransform(6, Matrix.CreateRotationX(wheelRot));
-                        Cmodel.BoneTransform(8, Matrix.CreateRotationX(wheelRot));
-                        Cmodel.Position += translation - CmodelForward * 0.03f;
-                        Cmodel.Position = new Vector3(Cmodel.Position.X, terrain.GetHeight(Cmodel.Position.X, Cmodel.Position.Z), Cmodel.Position.Z);              
-                    }
-                    else
-                        obstacleBackward = true;
-                }
-         
+                wheelRot -= 0.05f;
+                Cmodel.BoneTransform(2, Matrix.CreateRotationX(wheelRot));
+                Cmodel.BoneTransform(4, Matrix.CreateRotationX(wheelRot));
+                Cmodel.BoneTransform(6, Matrix.CreateRotationX(wheelRot));
+                Cmodel.BoneTransform(8, Matrix.CreateRotationX(wheelRot));
+                Cmodel.Position += translation - CmodelForward * 0.03f;
+                Cmodel.Position = new Vector3(Cmodel.Position.X, terrain.GetHeight(Cmodel.Position.X, Cmodel.Position.Z), Cmodel.Position.Z);
             }
+
             if (KState.IsKeyDown(Keys.Up))
             {
+                BodyRot += delta * steelRot;
+                Cmodel.BoneTransform(0, Matrix.CreateRotationY(BodyRot));
+                CmodelTransform = GetTransformPaths(Cmodel.Model.Bones[0]);
+                Vector3 scale;
+                Quaternion rotation;
+                Vector3 translation;
+                CmodelTransform.Decompose(out scale, out rotation, out translation);
+                Vector3 CmodelForward = Vector3.Transform(Vector3.UnitZ, rotation);
 
-                if (!obstacleForward)
-                {
-                    obstacleBackward = false;
+                Vector3 newPos = Cmodel.Position + translation + CmodelForward * 0.03f;
 
-                    BodyRot += delta * steelRot;
-                    Cmodel.BoneTransform(0, Matrix.CreateRotationY(BodyRot));
-                    CmodelTransform = GetTransformPaths(Cmodel.Model.Bones[0]);
-                    Vector3 scale;
-                    Quaternion rotation;
-                    Vector3 translation;
-                    CmodelTransform.Decompose(out scale, out rotation, out translation);
-                    Vector3 CmodelForward = Vector3.Transform(Vector3.UnitZ, rotation);
-
-                    Vector3 newPos = Cmodel.Position + translation + CmodelForward * 0.03f;
-
-                    if (Math.Abs((terrain.GetHeight(Cmodel.Position.X + 3f, Cmodel.Position.Z + 3f)) - newPos.Y) <= 100000000f)
-                    {
-                        wheelRot += 0.05f;
-                        Cmodel.BoneTransform(2, Matrix.CreateRotationX(wheelRot));
-                        Cmodel.BoneTransform(4, Matrix.CreateRotationX(wheelRot));
-                        Cmodel.BoneTransform(6, Matrix.CreateRotationX(wheelRot));
-                        Cmodel.BoneTransform(8, Matrix.CreateRotationX(wheelRot));
-                        Cmodel.Position += translation + CmodelForward * 0.03f;
-                        Cmodel.Position = new Vector3(Cmodel.Position.X, terrain.GetHeight(Cmodel.Position.X, Cmodel.Position.Z), Cmodel.Position.Z);
-                    }
-                    else
-                        obstacleForward = true;
-                }      
+                wheelRot += 0.05f;
+                Cmodel.BoneTransform(2, Matrix.CreateRotationX(wheelRot));
+                Cmodel.BoneTransform(4, Matrix.CreateRotationX(wheelRot));
+                Cmodel.BoneTransform(6, Matrix.CreateRotationX(wheelRot));
+                Cmodel.BoneTransform(8, Matrix.CreateRotationX(wheelRot));
+                Cmodel.Position += translation + CmodelForward * 0.03f;
+                Cmodel.Position = new Vector3(Cmodel.Position.X, terrain.GetHeight(Cmodel.Position.X, Cmodel.Position.Z), Cmodel.Position.Z);
             }
-
-
+            
             if (KState.IsKeyDown(Keys.F))
             {
-                if (bulletLock == false)
+                if (Cmodel.Bullet.IsFired == false)
                 {
-                    bulletLock = true;
-                    BulletFired = true;
-                    SFXManager.Play("PlayerShot");
-
-                    Vector3 scale;
-                    Quaternion rotation;
-                    Vector3 translation;
-                    CanonRelTransform = GetTransformPaths(Cmodel.Model.Bones[10]);
-                    CanonRelTransform.Decompose(out scale, out rotation, out translation);
-
-                    bulletForward = Vector3.Transform(Vector3.UnitZ, rotation);
-
-                    BulletModel.Position = Cmodel.Position + translation * new Vector3(0.001f, 0.001f, 0.001f) + bulletForward * 0.04f;
-                    BulletModel.Rotation = rotation;
-
-                    BulletTime.Start();
+                    Cmodel.Bullet.IsFired = true;
+                    BulletFire(Cmodel);
                 }
             }
 
-            if (BulletFired)
+            if (KState.IsKeyDown(Keys.E))
             {
-                if (BulletModel.Position.Y > terrain.GetHeight(BulletModel.Position.X, BulletModel.Position.Z))
+                enableEnemyFiring = true;
+            }   
+
+            foreach (Tank tank in TankList)
+            {
+                UpdateBullet(tank, gameTime);               
+            }
+
+            enemyRot += 0.05f;
+            Enemy.BoneTransform(9, Matrix.CreateRotationY(enemyRot));
+
+            if (enableEnemyFiring)
+            {
+                if (Enemy.Bullet.IsFired == false)
                 {
-                    BulletModel.Position += bulletForward * 0.2f - 0.0005f * Vector3.UnitY;
-                }
-                else
-                {
-                    MakeExplosion();
-                    Vector3 scale;
-                    Quaternion rotation;
-                    Vector3 translation;
-                    CanonRelTransform = GetTransformPaths(Cmodel.Model.Bones[10]);
-                    CanonRelTransform.Decompose(out scale, out rotation, out translation);
-                    bulletForward = Vector3.Transform(Vector3.UnitZ, rotation);
-                    BulletModel.Position = Cmodel.Position + translation * new Vector3(0.01f, 0.01f, 0.01f) + bulletForward * 0.04f;
-                    SFXManager.Play("Explosion");
-                    bulletExpired = true;
-                    bulletLock = false;
-                    BulletFired = false;
-                }
-                if (BulletTime.IsTimeEspired(gameTime))
-                {
-                    Vector3 scale;
-                    Quaternion rotation;
-                    Vector3 translation;
-                    CanonRelTransform = GetTransformPaths(Cmodel.Model.Bones[10]);
-                    CanonRelTransform.Decompose(out scale, out rotation, out translation);
-                    bulletForward = Vector3.Transform(Vector3.UnitZ, rotation);
-                    BulletModel.Position = Cmodel.Position + translation * new Vector3(0.01f, 0.01f, 0.01f) + bulletForward * 0.04f;
-                    bulletExpired = true;
-                    bulletLock = false;
-                    BulletFired = false;
+                    Enemy.Bullet.IsFired = true;
+                    BulletFire(Enemy);
                 }
             }
 
@@ -331,22 +227,28 @@ namespace TankAnimationVN
 
             base.Update(gameTime);
         }
-
-
-
+        private Matrix GetTransformPaths(ModelBone bone)
+        {
+            Matrix result = Matrix.Identity;
+            while (bone != null)
+            {
+                result = result * bone.Transform;
+                bone = bone.Parent;
+            }
+            return result;
+        }
         Vector3 GetForwardVector(Quaternion rot)
         {
             return new Vector3(2 * (rot.X * rot.Z + rot.W * rot.Y),
                                     2 * (rot.Y * rot.Z - rot.W * rot.X),
                                     1 - 2 * (rot.X * rot.X + rot.Y * rot.Y));
         }
-
         public void updateCamera(GameTime gameTime)
         {
             MouseState mouseState = Mouse.GetState();
             KeyboardState keyState = Keyboard.GetState();
 
-            
+
 
             float deltaX = (float)LastMouseState.X - (float)mouseState.X;
             float deltaY = (float)LastMouseState.Y - (float)mouseState.Y;
@@ -354,21 +256,16 @@ namespace TankAnimationVN
             ((FreeCamera)camera).Rotate(deltaX * 0.01f, deltaY * 0.01f);
 
             Vector3 translation = Vector3.Zero;
-            //if (keyState.IsKeyDown(Keys.W)) translation += Vector3.Forward;
-            //if (keyState.IsKeyDown(Keys.S)) translation += Vector3.Backward;
-            //if (keyState.IsKeyDown(Keys.A)) translation += Vector3.Left;
-            //if (keyState.IsKeyDown(Keys.D)) translation += Vector3.Right;
 
             ((FreeCamera)camera).position = Cmodel.Position + new Vector3(-0.4f, 0.35f, 0f);
             ((FreeCamera)camera).Move(translation);
-           
+
 
             camera.Update();
             ParticleManager.Update(gameTime);
 
             LastMouseState = Mouse.GetState();
         }
-
         protected override void Draw(GameTime gameTime)
         {
             GraphicsDevice.Clear(Color.CornflowerBlue);
@@ -383,34 +280,93 @@ namespace TankAnimationVN
                   MathHelper.ToDegrees(((FreeCamera)camera).pitch).ToString() + "," +
                   MathHelper.ToDegrees(((FreeCamera)camera).pitch).ToString(),
                   new Vector2(10, 10), Color.Black);
-            if (bulletExpired)
-            {
-                spriteBatch.DrawString(SFont, "                                                  ,                                                                                           " + "BULLET EXPIRED", new Vector2(10, 10), Color.Red);
-                bulletExpired = false;
-            }
             spriteBatch.End();
 
             GraphicsDevice.BlendState = BlendState.Opaque;
             GraphicsDevice.DepthStencilState = DepthStencilState.Default;
 
-            if (BulletFired)
+            foreach (Tank tank in TankList)
             {
-                BulletModel.Draw(camera.view, camera.projection);
+                tank.Draw(camera.view, camera.projection);
+                if (tank.Bullet.IsFired)
+                {
+                    tank.Bullet.Draw(camera.view, camera.projection);
+                }
             }
-
-            Cmodel.Draw(camera.view, camera.projection);
 
             terrain.Draw(camera, effect);
             ParticleManager.Draw((FreeCamera)camera);
             base.Draw(gameTime);
         }
-        private void MakeExplosion()
+        private void MakeExplosion(Bullet Bullet)
         {
             Vector3 impactPoint = new Vector3(
-            BulletModel.Position.X, 0, BulletModel.Position.Z);
+            Bullet.Position.X, 0, Bullet.Position.Z);
             impactPoint.Y = terrain.GetHeight(
             impactPoint.X, impactPoint.Z);
             ParticleManager.MakeExplosion(impactPoint, 200);
-        }   
+        }
+        private void BulletFire(Tank Shooter)
+        {
+            SFXManager.Play("PlayerShot");
+
+            Vector3 scale;
+            Quaternion rotation;
+            Vector3 translation;
+            Matrix CanonRelTransform = new Matrix();
+            CanonRelTransform = GetTransformPaths(Shooter.Model.Bones[10]);
+            CanonRelTransform.Decompose(out scale, out rotation, out translation);
+
+            Shooter.Bullet.bulletDirection = CalculateBulletDirection(Shooter);
+
+            Shooter.Bullet.Position = Shooter.Position + BulletTranslation(Shooter) * new Vector3(0.001f, 0.001f, 0.001f) + Shooter.Bullet.bulletDirection * 0.04f;
+            Shooter.Bullet.Rotation = rotation;
+            Shooter.Bullet.BulletTime.Start();
+        }
+        private void UpdateBullet(Tank Shooter,GameTime gameTime)
+        {
+            if (Shooter.Bullet.IsFired == true)
+            {
+                if (Shooter.Bullet.Position.Y > terrain.GetHeight(Shooter.Bullet.Position.X, Shooter.Bullet.Position.Z))
+                {
+                    Shooter.Bullet.Position += Shooter.Bullet.bulletDirection * 0.2f - 0.0005f * Vector3.UnitY;
+                }
+                else
+                {
+                    MakeExplosion(Shooter.Bullet);
+                    Shooter.Bullet.Position = Shooter.Position + BulletTranslation(Shooter) * new Vector3(0.01f, 0.01f, 0.01f) + Shooter.Bullet.bulletDirection * 0.04f;
+                    SFXManager.Play("Explosion");
+                    Shooter.Bullet.IsFired = false;
+                }
+                if (Shooter.Bullet.BulletTime.IsTimeEspired(gameTime))
+                {
+                    Shooter.Bullet.Position = Shooter.Position + BulletTranslation(Shooter) * new Vector3(0.01f, 0.01f, 0.01f) + Shooter.Bullet.bulletDirection * 0.04f;
+                    Shooter.Bullet.IsFired = false;
+                }
+            }
+        }
+        private Vector3 CalculateBulletDirection(Tank Shooter)
+        {
+            Vector3 scale;
+            Quaternion rotation;
+            Vector3 translation;
+            Matrix CanonRelTransform = new Matrix();
+            CanonRelTransform = GetTransformPaths(Shooter.Model.Bones[10]);
+            CanonRelTransform.Decompose(out scale, out rotation, out translation);
+                      
+            return Vector3.Transform(Vector3.UnitZ, rotation);
+        }
+        private Vector3 BulletTranslation(Tank Shooter)
+        {
+            Vector3 scale;
+            Quaternion rotation;
+            Vector3 translation;
+            Matrix CanonRelTransform = new Matrix();
+            CanonRelTransform = GetTransformPaths(Shooter.Model.Bones[10]);
+            CanonRelTransform.Decompose(out scale, out rotation, out translation);
+         
+            return translation;
+        }
     }
 }
+
