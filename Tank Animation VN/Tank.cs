@@ -15,5 +15,52 @@ namespace TankAnimationVN
         {
 
         }
+
+        public void RotateWheels(float rotation)
+        {
+            this.BoneTransform(2, Matrix.CreateRotationX(rotation));
+            this.BoneTransform(4, Matrix.CreateRotationX(rotation));
+            this.BoneTransform(6, Matrix.CreateRotationX(rotation));
+            this.BoneTransform(8, Matrix.CreateRotationX(rotation));
+        }
+
+        public Vector3 GetTankDirection()
+        {
+            Vector3 scale, translation;
+            Quaternion rotation;
+            Matrix CmodelTransform = new Matrix();
+            CmodelTransform = GetTransformPaths(this.Model.Bones[0]);
+            CmodelTransform.Decompose(out scale, out rotation, out translation);
+            return Vector3.Transform(Vector3.UnitZ, rotation);
+        }
+
+        public Vector3 GetTankTranslation()
+        {
+            Vector3 scale, translation;
+            Quaternion rotation;
+            Matrix CmodelTransform = new Matrix();
+            CmodelTransform = GetTransformPaths(this.Model.Bones[0]);
+            CmodelTransform.Decompose(out scale, out rotation, out translation);
+            return translation;
+        }
+        public void BulletFire()
+        {
+            if (this.Bullet.IsFired == false)
+            {
+                this.Bullet.IsFired = true;
+                Vector3 scale;
+                Quaternion rotation;
+                Vector3 translation;
+                Matrix CanonRelTransform = new Matrix();
+                CanonRelTransform = GetTransformPaths(this.Model.Bones[10]);
+                CanonRelTransform.Decompose(out scale, out rotation, out translation);
+
+                this.Bullet.bulletDirection = this.Bullet.CalculateBulletDirection(this);
+
+                this.Bullet.Position = this.Position + this.Bullet.BulletTranslation(this) * new Vector3(0.001f, 0.001f, 0.001f) + this.Bullet.bulletDirection * 0.04f;
+                this.Bullet.Rotation = rotation;
+                this.Bullet.BulletTime.Start();
+            }
+        }
     }
 }

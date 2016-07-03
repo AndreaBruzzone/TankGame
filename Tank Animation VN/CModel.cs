@@ -92,6 +92,17 @@ namespace TankAnimationVN
             Model.Bones[BoneIndex].Transform = MatTransform * originalTransforms[BoneIndex];
         }
 
+        public Matrix GetTransformPaths(ModelBone bone)
+        {
+            Matrix result = Matrix.Identity;
+            while (bone != null)
+            {
+                result = result * bone.Transform;
+                bone = bone.Parent;
+            }
+            return result;
+        }
+
     }
 }
 

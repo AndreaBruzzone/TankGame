@@ -17,8 +17,31 @@ namespace TankAnimationVN
                        Vector3 Scale, GraphicsDevice graphicsDevice) : base(Model,Position,Rotation,Scale,graphicsDevice)
         {
             IsFired = false;
-            BulletTime = new TimeClass(3000);
+            BulletTime = new TimeClass(6000);
             bulletDirection = new Vector3(1, 1, 1);
+        }
+
+        public Vector3 CalculateBulletDirection(Tank Shooter)
+        {
+            Vector3 scale;
+            Quaternion rotation;
+            Vector3 translation;
+            Matrix CanonRelTransform = new Matrix();
+            CanonRelTransform = GetTransformPaths(Shooter.Model.Bones[10]);
+            CanonRelTransform.Decompose(out scale, out rotation, out translation);
+
+            return Vector3.Transform(Vector3.UnitZ, rotation);
+        }
+        public Vector3 BulletTranslation(Tank Shooter)
+        {
+            Vector3 scale;
+            Quaternion rotation;
+            Vector3 translation;
+            Matrix CanonRelTransform = new Matrix();
+            CanonRelTransform = GetTransformPaths(Shooter.Model.Bones[10]);
+            CanonRelTransform.Decompose(out scale, out rotation, out translation);
+
+            return translation;
         }
     }
 }
