@@ -27,7 +27,9 @@ namespace TankAnimationVN
         float BodyRot = 0;
         float enemyRot = 0;
 
-        bool enableEnemyFiring = false;
+        Vector3 dir;
+
+        bool enableEnemyFiring = true;
 
         Terrain Terrain;
         Effect Effect;
@@ -89,6 +91,8 @@ namespace TankAnimationVN
         {
             var delta = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
+            enableEnemyFiring = true;
+
             if (FirstRun)
             {
                 LastMouseState = Mouse.GetState();
@@ -126,6 +130,7 @@ namespace TankAnimationVN
                 steelRot += 0.05f;
                 if (steelRot > 1.5f)
                     steelRot = 1.5f;
+
                 PlayerTank.BoneTransform(3, Matrix.CreateRotationY(steelRot));
                 PlayerTank.BoneTransform(7, Matrix.CreateRotationY(steelRot));
             }
@@ -146,7 +151,7 @@ namespace TankAnimationVN
                 wheelRot -= 0.05f;
                 PlayerTank.RotateWheels(wheelRot);
 
-                PlayerTank.Position += PlayerTank.GetTankTranslation() - PlayerTank.GetTankDirection() * 0.03f;
+                PlayerTank.Position += PlayerTank.GetTankTranslation() - PlayerTank.GetTankDirection() * 0.01f;
                 PlayerTank.Position = new Vector3(PlayerTank.Position.X, Terrain.GetHeight(PlayerTank.Position.X, PlayerTank.Position.Z), PlayerTank.Position.Z);
             }
 
@@ -158,25 +163,16 @@ namespace TankAnimationVN
                 wheelRot += 0.05f;
                 PlayerTank.RotateWheels(wheelRot);
 
-                PlayerTank.Position += PlayerTank.GetTankTranslation() + PlayerTank.GetTankDirection() * 0.03f;
-                PlayerTank.Position = new Vector3(PlayerTank.Position.X, Terrain.GetHeight(PlayerTank.Position.X, PlayerTank.Position.Z),PlayerTank.Position.Z);
+                PlayerTank.Position += PlayerTank.GetTankTranslation() + PlayerTank.GetTankDirection() * 0.01f;
+                PlayerTank.Position = new Vector3(PlayerTank.Position.X, Terrain.GetHeight(PlayerTank.Position.X, PlayerTank.Position.Z), PlayerTank.Position.Z);
             }
 
             if (KState.IsKeyDown(Keys.F))
             {
-                if (PlayerTank.Bullet.IsFired == false)               
-                    SFXManager.Play("PlayerShot");                 
-             
-                PlayerTank.BulletFire();
-            }
-
-            if (KState.IsKeyDown(Keys.E))
-            {
-                if (enableEnemyFiring == false)
-                {
-                    enableEnemyFiring = true;
+                if (PlayerTank.Bullet.IsFired == false)
                     SFXManager.Play("PlayerShot");
-                }
+
+                PlayerTank.BulletFire();
             }
 
             foreach (Tank tank in TankList)
@@ -184,21 +180,20 @@ namespace TankAnimationVN
                 UpdateBullet(tank, gameTime);
             }
 
-            enemyRot += 0.05f;
+            enemyRot += 0.03f;
             EnemyTank.BoneTransform(9, Matrix.CreateRotationY(enemyRot));
 
-            if (enableEnemyFiring)
-            {
-                EnemyTank.BulletFire();
-            }
+            EnemyAutoFiring(); //-------------> La torretta gira in auto e spara a me
 
             CheckBounds(PlayerTank);
 
             UpdateCamera(gameTime);
 
+
+
             base.Update(gameTime);
         }
-                       
+
         protected override void Draw(GameTime gameTime)
         {
             GraphicsDevice.Clear(Color.CornflowerBlue);
@@ -207,12 +202,8 @@ namespace TankAnimationVN
             spriteBatch.DrawString(SFont, "Position :  " +
                   ((FreeCamera)camera).position.X.ToString() + "," +
                   ((FreeCamera)camera).position.Y.ToString() + "," +
-                  ((FreeCamera)camera).position.Z.ToString() + "," +
-                  "Yaw, Pitch, Roll " +
-                  MathHelper.ToDegrees(((FreeCamera)camera).yaw).ToString() + "," +
-                  MathHelper.ToDegrees(((FreeCamera)camera).pitch).ToString() + "," +
-                  MathHelper.ToDegrees(((FreeCamera)camera).pitch).ToString(),
-                  new Vector2(10, 10), Color.Black);
+                  ((FreeCamera)camera).position.Z.ToString() + ",",
+                    new Vector2(10, 10), Color.Black);
             spriteBatch.End();
 
             GraphicsDevice.BlendState = BlendState.Opaque;
@@ -238,29 +229,50 @@ namespace TankAnimationVN
             impactPoint.Y = Terrain.GetHeight(
             impactPoint.X, impactPoint.Z);
             ParticleManager.MakeExplosion(impactPoint, 200);
-        }           
+        }
         private void UpdateBullet(Tank Shooter, GameTime gameTime)
         {
             if (Shooter.Bullet.IsFired == true)
             {
-                if (Shooter.Bullet.Position.Y > Terrain.GetHeight(Shooter.Bullet.Position.X, Shooter.Bullet.Position.Z))
+                if (Shooter.Bullet.Position.Y > Terrain.GetHeight(Shooter.Bullet.Position.X, Shooter.Bullet.Position.Z)) //Controllo la posizione del proiettile
                 {
-                    Shooter.Bullet.Position += Shooter.Bullet.bulletDirection * 0.1f - 0.0005f * Vector3.UnitY;
+                    Shooter.Bullet.Position += Shooter.Bullet.bulletDirection * 0.05f - 0.0005f * Vector3.UnitY;
                 }
-                else
+                else //Proiettile tocca terra
                 {
                     MakeExplosion(Shooter.Bullet);
                     Shooter.Bullet.Position = Shooter.Position + Shooter.Bullet.BulletTranslation(Shooter) * new Vector3(0.01f, 0.01f, 0.01f) + Shooter.Bullet.bulletDirection * 0.04f;
                     SFXManager.Play("Explosion");
                     Shooter.Bullet.IsFired = false;
                 }
-                if (Shooter.Bullet.BulletTime.IsTimeEspired(gameTime))
+                if (Shooter.Bullet.BulletTime.IsTimeEspired(gameTime)) //Proiettile ha esaurito il tempo (volerebbe indefinitivamente, quindi lo ignoro)
                 {
                     Shooter.Bullet.Position = Shooter.Position + Shooter.Bullet.BulletTranslation(Shooter) * new Vector3(0.01f, 0.01f, 0.01f) + Shooter.Bullet.bulletDirection * 0.04f;
                     Shooter.Bullet.IsFired = false;
                 }
-            }
+                if (CollisionCheck(PlayerTank, Shooter.Bullet)) //Proiettile colpisce
+                {
+                    if (Shooter != PlayerTank)
+                    {
+                        MakeExplosion(Shooter.Bullet);
+                        Shooter.Bullet.Position = Shooter.Position + Shooter.Bullet.BulletTranslation(Shooter) * new Vector3(0.01f, 0.01f, 0.01f) + Shooter.Bullet.bulletDirection * 0.04f;
+                        SFXManager.Play("Explosion");
+                        Shooter.Bullet.IsFired = false;
+                    }
+                }
+                if (CollisionCheck(EnemyTank, Shooter.Bullet)) //Proiettile colpisce
+                {
+                    if (Shooter != EnemyTank)
+                    {
+                        MakeExplosion(Shooter.Bullet);
+                        Shooter.Bullet.Position = Shooter.Position + Shooter.Bullet.BulletTranslation(Shooter) * new Vector3(0.01f, 0.01f, 0.01f) + Shooter.Bullet.bulletDirection * 0.04f;
+                        SFXManager.Play("Explosion");
+                        Shooter.Bullet.IsFired = false;
+                    }
+                }
+            }      
         }
+
         public void UpdateCamera(GameTime gameTime)
         {
             MouseState mouseState = Mouse.GetState();
@@ -273,9 +285,9 @@ namespace TankAnimationVN
 
             ((FreeCamera)camera).Rotate(deltaX * 0.01f, deltaY * 0.01f);
 
-            Vector3 translation = Vector3.Zero;
+            Vector3 translation = PlayerTank.GetTankTranslation();
 
-            ((FreeCamera)camera).position = PlayerTank.Position + new Vector3(-0.4f, 0.35f, 0f);
+            ((FreeCamera)camera).position = PlayerTank.Position + PlayerTank.GetTankTranslation() + new Vector3(-0.4f, 0.35f, 0f);
             ((FreeCamera)camera).Move(translation);
 
 
@@ -289,6 +301,33 @@ namespace TankAnimationVN
         {
             if (tank.Position.X > 125 || tank.Position.Z > 125 || tank.Position.X < 2 || tank.Position.Z < 2)
                 tank.Position = new Vector3(50, Terrain.GetHeight(50, 61), 61);
+        }
+
+        public bool CollisionCheck(Tank tank, Bullet bullet)
+        {
+            BoundingSphere sphere1 = tank.Model.Meshes[2].BoundingSphere;
+            sphere1 = sphere1.Transform(tank.baseworld);
+
+            if (sphere1.Intersects(bullet.BoundingSphere))
+                return true;
+            else
+                return false;
+        }   
+
+        public void EnemyAutoFiring()
+        {
+            Vector3 directionOfFiring = (PlayerTank.Position - EnemyTank.Position);
+            directionOfFiring.Normalize();
+            Vector3 directionOfEnemyTurret = EnemyTank.Bullet.CalculateBulletDirection(EnemyTank);
+            if (directionOfEnemyTurret.X > directionOfFiring.X - 0.02f && directionOfEnemyTurret.X < directionOfFiring.X + 0.02f &
+                directionOfEnemyTurret.Z > directionOfFiring.Z - 0.02f && directionOfEnemyTurret.Z < directionOfFiring.Z + 0.02f)
+            {
+                if (!EnemyTank.Bullet.IsFired)
+                {
+                    EnemyTank.BulletFire();
+                    SFXManager.Play("PlayerShot");
+                }
+            }
         }
     }
 }
