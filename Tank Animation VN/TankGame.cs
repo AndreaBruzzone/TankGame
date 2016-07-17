@@ -133,18 +133,18 @@ namespace TankAnimationVN
 
             if (KState.IsKeyDown(Keys.Left))
             {
-                steelRot += 0.05f;
-                if (steelRot > 1.5f)
-                    steelRot = 1.5f;
+                steelRot += 0.03f;
+                if (steelRot > 0.75f)
+                    steelRot = 0.75f;
 
                 PlayerTank.BoneTransform(3, Matrix.CreateRotationY(steelRot));
                 PlayerTank.BoneTransform(7, Matrix.CreateRotationY(steelRot));
             }
             if (KState.IsKeyDown(Keys.Right))
             {
-                steelRot -= 0.05f;
-                if (steelRot < -1.5f)
-                    steelRot = -1.5f;
+                steelRot -= 0.03f;
+                if (steelRot < -0.75f)
+                    steelRot = -0.75f;
                 PlayerTank.BoneTransform(3, Matrix.CreateRotationY(steelRot));
                 PlayerTank.BoneTransform(7, Matrix.CreateRotationY(steelRot));
 
@@ -177,7 +177,8 @@ namespace TankAnimationVN
                         enableForward = false;
                     
                     BodyRot += delta * steelRot;
-                    PlayerTank.BoneTransform(0, Matrix.CreateRotationY(BodyRot));
+
+                    PlayerTank.BoneTransform(0, Matrix.CreateRotationY(BodyRot) * Matrix.CreateRotationX(UpdateInclination()));
 
                     wheelRot += 0.05f;
                     PlayerTank.RotateWheels(wheelRot);
@@ -211,7 +212,7 @@ namespace TankAnimationVN
 
             UpdateCamera(gameTime);
 
-            UpdateInclination();
+            //UpdateInclination();
 
             base.Update(gameTime);
         }
@@ -379,7 +380,7 @@ namespace TankAnimationVN
                 return true;
         }
 
-        public void UpdateInclination()
+        public float UpdateInclination()
         {
             Vector3 tankDirection2 = CalculateTankDirection();
             tankDirection2.Normalize();
@@ -387,7 +388,7 @@ namespace TankAnimationVN
 
             float tankForwardHeight = TerrainList[4].GetHeight(PlayerTank.Position.X + tankDirection.X, PlayerTank.Position.Z + tankDirection.Z);
             Vector3 tankForwardPos = new Vector3(PlayerTank.Position.X + tankDirection.X, tankForwardHeight, PlayerTank.Position.Z + tankDirection.Z);
-            Vector3 heigtdir = (-PlayerTank.Position + tankForwardPos);
+            Vector3 heigtdir = (tankForwardPos - PlayerTank.Position);
             heigtdir.Normalize();
 
             float a = Vector3.Dot(heigtdir, tankDirection2);
@@ -397,11 +398,13 @@ namespace TankAnimationVN
             if (Double.IsNaN(inclination))
                 inclination = 0f;
 
-            for (int i = 0; i < 12; i++)
-            {
-                if(i == 1 || i == 5 || i == 9)          //Per adesso non funziona con il bone[0] principale
-                     PlayerTank.BoneTransform(i, Matrix.CreateRotationX(inclination));
-            }
+            return inclination;
+
+            //for (int i = 0; i < 12; i++)
+            //{
+            //    if(i == 1 || i == 5 || i == 9)          //Per adesso non funziona con il bone[0] principale
+            //         PlayerTank.BoneTransform(i, Matrix.CreateRotationX(inclination));
+            //}
         }
 
         public Vector3 CalculateTankDirection()
