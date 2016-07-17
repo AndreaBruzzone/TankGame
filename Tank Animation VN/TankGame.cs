@@ -30,15 +30,21 @@ namespace TankAnimationVN
 
         bool enableForward = false, enableBackward = false;
 
-        Terrain Terrain;
+        List<Terrain> TerrainList = new List<Terrain>();
         Effect Effect;
+        BasicEffect BasicEffect;
 
         Matrix PlayerTankTransform;
 
         public Game1()
         {
             graphics = new GraphicsDeviceManager(this);
+            //graphics.PreferredBackBufferWidth = 800;
+            //graphics.PreferredBackBufferHeight = 400;
+            //graphics.SynchronizeWithVerticalRetrace = false;
+            //graphics.PreferMultiSampling = true;
             Content.RootDirectory = "Content";
+            //IsFixedTimeStep = true;
         }
 
         protected override void Initialize()
@@ -57,12 +63,13 @@ namespace TankAnimationVN
 
             SFont = Content.Load<SpriteFont>("SpriteFont");
 
-            Terrain = new Terrain(GraphicsDevice, Content.Load<Texture2D>("desert"), Content.Load<Texture2D>("water"), Content.Load<Texture2D>("sand"), Content.Load<Texture2D>("vetta"), 1f, 128, 128, 5f);
-
-            PlayerTank = new Tank(Content.Load<Model>("tank"), new Vector3(61.1f, Terrain.GetHeight(61.1f, 63.3f), 63.3f),
+            for (int i = 0; i < 9; i++)
+                TerrainList.Add(new Terrain(GraphicsDevice, Content.Load<Texture2D>("heightmap4"), Content.Load<Texture2D>("sand"), Content.Load<Texture2D>("sand"), Content.Load<Texture2D>("vetta"), 1f, 128, 128, 5f));
+         
+            PlayerTank = new Tank(Content.Load<Model>("tank"), new Vector3(125.7f, TerrainList[4].GetHeight(125.7f, 120), 120),
                                 new Quaternion(), new Vector3(0.001f, 0.001f, 0.001f), GraphicsDevice);
 
-            EnemyTank = new Tank(Content.Load<Model>("enemy"), new Vector3(53, Terrain.GetHeight(53, 61), 61),
+            EnemyTank = new Tank(Content.Load<Model>("enemy"), new Vector3(53, TerrainList[4].GetHeight(53, 61), 61),
                                 new Quaternion(), new Vector3(0.001f, 0.001f, 0.001f), GraphicsDevice);
 
             PlayerTank.Bullet = new Bullet(Content.Load<Model>("Bullet"), PlayerTank.GetTransformPaths(PlayerTank.Model.Bones[10]).Translation,
@@ -74,7 +81,7 @@ namespace TankAnimationVN
             TankList.Add(PlayerTank);
             TankList.Add(EnemyTank);
 
-            camera = new FreeCamera(new Vector3(11, Terrain.GetHeight(11, 61) + 2, 61), -20f, 0f, GraphicsDevice);
+            camera = new FreeCamera(new Vector3(11, TerrainList[4].GetHeight(11, 61) + 2, 61), -20f, 0f, GraphicsDevice);
 
             SFXManager.AddEffect("Explosion", Content.Load<SoundEffect>("Explosion1"));
             SFXManager.AddEffect("Jump", Content.Load<SoundEffect>("Jump"));
@@ -82,6 +89,8 @@ namespace TankAnimationVN
             SFXManager.AddEffect("EnemyShot", Content.Load<SoundEffect>("Shot2"));
 
             ParticleManager.Initialize(GraphicsDevice, Content.Load<Effect>("Particles"), Content.Load<Texture2D>("Explosion"));
+
+            BasicEffect = new BasicEffect(graphics.GraphicsDevice);
 
         }
 
@@ -154,7 +163,7 @@ namespace TankAnimationVN
                     PlayerTank.RotateWheels(wheelRot);
 
                     PlayerTank.Position += PlayerTank.GetTankTranslation() - PlayerTank.GetTankDirection() * 0.01f;
-                    PlayerTank.Position = new Vector3(PlayerTank.Position.X, Terrain.GetHeight(PlayerTank.Position.X, PlayerTank.Position.Z), PlayerTank.Position.Z);
+                    PlayerTank.Position = new Vector3(PlayerTank.Position.X, TerrainList[4].GetHeight(PlayerTank.Position.X, PlayerTank.Position.Z), PlayerTank.Position.Z);
                 }
                 else
                     enableForward = true;
@@ -174,7 +183,7 @@ namespace TankAnimationVN
                     PlayerTank.RotateWheels(wheelRot);
 
                     PlayerTank.Position += PlayerTank.GetTankTranslation() + PlayerTank.GetTankDirection() * 0.01f;
-                    PlayerTank.Position = new Vector3(PlayerTank.Position.X, Terrain.GetHeight(PlayerTank.Position.X, PlayerTank.Position.Z), PlayerTank.Position.Z);
+                    PlayerTank.Position = new Vector3(PlayerTank.Position.X, TerrainList[4].GetHeight(PlayerTank.Position.X, PlayerTank.Position.Z), PlayerTank.Position.Z);
                 }
                 else
                     enableBackward = true;
@@ -209,7 +218,8 @@ namespace TankAnimationVN
 
         protected override void Draw(GameTime gameTime)
         {
-            GraphicsDevice.Clear(Color.CornflowerBlue);
+            GraphicsDevice.Clear(Color.DarkGray);
+            KeyboardState KState = Keyboard.GetState();
 
             spriteBatch.Begin();
             spriteBatch.DrawString(SFont, "Position :  " +
@@ -231,7 +241,17 @@ namespace TankAnimationVN
                 }
             }
 
-            Terrain.Draw(camera, Effect);
+            TerrainList[0].Draw(camera, Effect, BasicEffect, -127 , 127);
+            TerrainList[1].Draw(camera, Effect, BasicEffect, 0, 127);
+            TerrainList[2].Draw(camera, Effect, BasicEffect, 127, 127);
+            TerrainList[3].Draw(camera, Effect, BasicEffect, -127, 0);
+            TerrainList[4].Draw(camera, Effect, BasicEffect);
+            TerrainList[5].Draw(camera, Effect, BasicEffect, 127, 0);
+            TerrainList[6].Draw(camera, Effect, BasicEffect, -127, -127);
+            TerrainList[7].Draw(camera, Effect, BasicEffect, 0,-127);
+            TerrainList[8].Draw(camera, Effect, BasicEffect, 127, -127);
+
+
             ParticleManager.Draw((FreeCamera)camera);
             base.Draw(gameTime);
         }
@@ -245,7 +265,7 @@ namespace TankAnimationVN
         {
             if (Shooter.Bullet.IsFired == true)
             {
-                if (Shooter.Bullet.Position.Y > Terrain.GetHeight(Shooter.Bullet.Position.X, Shooter.Bullet.Position.Z)) //Controllo la posizione del proiettile
+                if (Shooter.Bullet.Position.Y > TerrainList[4].GetHeight(Shooter.Bullet.Position.X, Shooter.Bullet.Position.Z)) //Controllo la posizione del proiettile
                 {
                     Shooter.Bullet.Position += Shooter.Bullet.bulletDirection * 0.05f - 0.001f * Vector3.UnitY;
                 }
@@ -304,8 +324,14 @@ namespace TankAnimationVN
 
         public void CheckBounds(Tank tank)
         {
-            if (tank.Position.X > 125 || tank.Position.Z > 125 || tank.Position.X < 2 || tank.Position.Z < 2)
-                tank.Position = new Vector3(50, Terrain.GetHeight(50, 61), 61);
+            if (tank.Position.X > 126 )
+                tank.Position = new Vector3(2, TerrainList[4].GetHeight(2, tank.Position.Z), tank.Position.Z);
+            if (tank.Position.X < 2)
+                tank.Position = new Vector3(126, TerrainList[4].GetHeight(126, tank.Position.Z), tank.Position.Z);           
+            if (tank.Position.Z > 126)
+                tank.Position = new Vector3(tank.Position.X, TerrainList[4].GetHeight(tank.Position.X, 2), 2);     
+            if (tank.Position.Z < 2)
+                tank.Position = new Vector3(tank.Position.X, TerrainList[4].GetHeight(tank.Position.X, 126), 126);
         }
 
         public bool CollisionCheck(Tank tank, Bullet bullet)
@@ -342,9 +368,9 @@ namespace TankAnimationVN
             tankDirection2.Normalize();
             Vector3 tankDirection = tankDirection2 * 0.15f;
 
-            float tankForwardHeight = Terrain.GetHeight(PlayerTank.Position.X + tankDirection.X, PlayerTank.Position.Z + tankDirection.Z);
-            float tankBackwardHeight = Terrain.GetHeight(PlayerTank.Position.X - tankDirection.X, PlayerTank.Position.Z - tankDirection.Z);
-            float tankHeight = Terrain.GetHeight(PlayerTank.Position.X, PlayerTank.Position.Z);
+            float tankForwardHeight = TerrainList[4].GetHeight(PlayerTank.Position.X + tankDirection.X, PlayerTank.Position.Z + tankDirection.Z);
+            float tankBackwardHeight = TerrainList[4].GetHeight(PlayerTank.Position.X - tankDirection.X, PlayerTank.Position.Z - tankDirection.Z);
+            float tankHeight = TerrainList[4].GetHeight(PlayerTank.Position.X, PlayerTank.Position.Z);
 
             //if (Math.Abs(tankHeight - tankForwardHeight) > 0.1f || Math.Abs(tankHeight - tankBackwardHeight)> 0.1f)                   //-------> Togli commento per bloccare scalata troppo ripida
             if (Math.Abs(tankHeight - tankForwardHeight) > 10000f || Math.Abs(tankHeight - tankBackwardHeight) > 10000f)            //-------> Il carro scala qualsiasi montagna
@@ -359,7 +385,7 @@ namespace TankAnimationVN
             tankDirection2.Normalize();
             Vector3 tankDirection = tankDirection2 * 0.15f;
 
-            float tankForwardHeight = Terrain.GetHeight(PlayerTank.Position.X + tankDirection.X, PlayerTank.Position.Z + tankDirection.Z);
+            float tankForwardHeight = TerrainList[4].GetHeight(PlayerTank.Position.X + tankDirection.X, PlayerTank.Position.Z + tankDirection.Z);
             Vector3 tankForwardPos = new Vector3(PlayerTank.Position.X + tankDirection.X, tankForwardHeight, PlayerTank.Position.Z + tankDirection.Z);
             Vector3 heigtdir = (-PlayerTank.Position + tankForwardPos);
             heigtdir.Normalize();
@@ -368,6 +394,8 @@ namespace TankAnimationVN
             inclination = (float)Math.Acos(a);
             if (heigtdir.Y > tankDirection2.Y)
                 inclination = inclination * -1;
+            if (Double.IsNaN(inclination))
+                inclination = 0f;
 
             for (int i = 0; i < 12; i++)
             {

@@ -8,9 +8,14 @@ texture terrainTexture3;
 float3 lightDirection;
 float4 lightColor;
 float lightBrightness;
+float3 cameraPos;
 
 float4 ambientLightColor;
 float ambientLightLevel;
+
+float FogNear;
+float FogFar;
+float4 FogColor;
 
 float maxElevation;
 float trans1 = 0.10;
@@ -47,6 +52,7 @@ struct VertexShaderOutput
 	float2 TextureCoordinate : TEXCOORD0;
 	float4 LightingColor : COLOR0;
 	float Elevation : TEXCOORD1;
+    float4 Position3D : TEXCOORD2;
 };
 
 VertexShaderOutput VertexShaderFunction(VertexShaderInput input)
@@ -60,6 +66,7 @@ VertexShaderOutput VertexShaderFunction(VertexShaderInput input)
 	float lightLevel = dot(normal, lightDirection);
 	output.LightingColor = saturate(lightColor * lightBrightness * lightLevel);
 	output.Elevation = input.Position.y;
+    output.Position3D = mul(input.Position, World);
 	return output;
 }
 float4 PixelShaderFunction(VertexShaderOutput input) : COLOR0
@@ -97,7 +104,12 @@ pixelColor = highColor;
 pixelColor *= input.LightingColor;
 pixelColor += (ambientLightColor * ambientLightLevel);
 pixelColor.a = 1.0;
-return pixelColor;
+
+float distance = length(cameraPos - input.Position3D);
+float l = saturate((distance-FogNear)/(FogFar-FogNear));
+return lerp(pixelColor, FogColor, l);
+
+//return pixelColor;
 }
 technique Technique1
 {

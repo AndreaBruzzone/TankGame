@@ -134,13 +134,20 @@ new Vector2((float)x / textureScale, (float)z / textureScale);
             indexBuffer.SetData(indices);
         }
 
-        public void Draw(Camera camera,Effect effect)
+        public void Draw(Camera camera,Effect effect, BasicEffect BasicEffect, float translationX = 0,float translationZ = 0)
         {
+            float FOGNEAR = 0.0f;
+            float FOGFAR = 15.0f;
+
+            
             effect.CurrentTechnique = effect.Techniques["Technique1"];
             effect.Parameters["terrainTexture1"].SetValue(terrainTexture);
-            effect.Parameters["World"].SetValue(Matrix.Identity);
+            Matrix worldMatrix = Matrix.Identity;
+            worldMatrix = Matrix.CreateTranslation(translationX, 0, translationZ);
+            effect.Parameters["World"].SetValue(worldMatrix);
             effect.Parameters["View"].SetValue(camera.view);
             effect.Parameters["Projection"].SetValue(camera.projection);
+            effect.Parameters["cameraPos"].SetValue(((FreeCamera)camera).position);
 
             Vector3 lightDirection = new Vector3(-1f, 1f, -1f);
             lightDirection.Normalize();
@@ -155,6 +162,10 @@ new Vector2((float)x / textureScale, (float)z / textureScale);
             effect.Parameters["terrainTexture2"].SetValue(terrainTexture2);
             effect.Parameters["terrainTexture3"].SetValue(terrainTexture3);
             effect.Parameters["maxElevation"].SetValue(maxHeight);
+
+            effect.Parameters["FogColor"].SetValue(Color.DarkGray.ToVector4());
+            effect.Parameters["FogNear"].SetValue(FOGNEAR);
+            effect.Parameters["FogFar"].SetValue(FOGFAR);
 
             foreach (EffectPass pass in effect.CurrentTechnique.Passes)
             {
