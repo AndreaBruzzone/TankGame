@@ -153,10 +153,7 @@ namespace TankAnimationVN
                         enableBackward = false;
                     BodyRot -= delta * steelRot;
 
-                    Vector3 tankAxis = CalculateTankDirection();
-                    tankAxis.Normalize();
-
-                    PlayerTank.BoneTransform(0, Matrix.CreateRotationY(BodyRot) * Matrix.CreateFromAxisAngle(tankAxis, inclination + NextInclination(tankAxis)));
+                    DoTankTransform();
 
                     wheelRot -= 0.05f;
                     PlayerTank.RotateWheels(wheelRot);
