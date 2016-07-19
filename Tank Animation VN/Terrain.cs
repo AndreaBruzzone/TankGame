@@ -134,10 +134,10 @@ new Vector2((float)x / textureScale, (float)z / textureScale);
             indexBuffer.SetData(indices);
         }
 
-        public void Draw(Camera camera,Effect effect, BasicEffect BasicEffect, float translationX = 0,float translationZ = 0)
+        public void Draw(Camera camera,Effect effect, float translationX = 0,float translationZ = 0)
         {
             float FOGNEAR = 0.0f;
-            float FOGFAR = 15.0f;
+            float FOGFAR = 10.0f;
 
             
             effect.CurrentTechnique = effect.Techniques["Technique1"];

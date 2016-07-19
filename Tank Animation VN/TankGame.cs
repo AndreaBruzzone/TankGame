@@ -32,9 +32,6 @@ namespace TankAnimationVN
 
         List<Terrain> TerrainList = new List<Terrain>();
         Effect Effect;
-        BasicEffect BasicEffect;
-
-        Matrix PlayerTankTransform;
 
         public Game1()
         {
@@ -69,7 +66,7 @@ namespace TankAnimationVN
             PlayerTank = new Tank(Content.Load<Model>("tank"), new Vector3(125.7f, TerrainList[4].GetHeight(125.7f, 120), 120),
                                 new Quaternion(), new Vector3(0.001f, 0.001f, 0.001f), GraphicsDevice);
 
-            EnemyTank = new Tank(Content.Load<Model>("enemy"), new Vector3(53, TerrainList[4].GetHeight(53, 61), 61),
+            EnemyTank = new Tank(Content.Load<Model>("enemy"), new Vector3(15, TerrainList[4].GetHeight(15, 118), 118),
                                 new Quaternion(), new Vector3(0.001f, 0.001f, 0.001f), GraphicsDevice);
 
             PlayerTank.Bullet = new Bullet(Content.Load<Model>("Bullet"), PlayerTank.GetTransformPaths(PlayerTank.Model.Bones[10]).Translation,
@@ -89,8 +86,6 @@ namespace TankAnimationVN
             SFXManager.AddEffect("EnemyShot", Content.Load<SoundEffect>("Shot2"));
 
             ParticleManager.Initialize(GraphicsDevice, Content.Load<Effect>("Particles"), Content.Load<Texture2D>("Explosion"));
-
-            BasicEffect = new BasicEffect(graphics.GraphicsDevice);
 
         }
 
@@ -157,7 +152,11 @@ namespace TankAnimationVN
                     if (CheckInclinationForMove())
                         enableBackward = false;
                     BodyRot -= delta * steelRot;
-                    PlayerTank.BoneTransform(0, Matrix.CreateRotationY(BodyRot));
+
+                    Vector3 tankAxis = CalculateTankDirection();
+                    tankAxis.Normalize();
+
+                    PlayerTank.BoneTransform(0, Matrix.CreateRotationY(BodyRot) * Matrix.CreateFromAxisAngle(tankAxis, inclination + NextInclination(tankAxis)));
 
                     wheelRot -= 0.05f;
                     PlayerTank.RotateWheels(wheelRot);
@@ -178,7 +177,7 @@ namespace TankAnimationVN
                     
                     BodyRot += delta * steelRot;
 
-                    PlayerTank.BoneTransform(0, Matrix.CreateRotationY(BodyRot) * Matrix.CreateRotationX(UpdateInclination()));
+                    DoTankTransform();
 
                     wheelRot += 0.05f;
                     PlayerTank.RotateWheels(wheelRot);
@@ -212,8 +211,6 @@ namespace TankAnimationVN
 
             UpdateCamera(gameTime);
 
-            //UpdateInclination();
-
             base.Update(gameTime);
         }
 
@@ -242,15 +239,15 @@ namespace TankAnimationVN
                 }
             }
 
-            TerrainList[0].Draw(camera, Effect, BasicEffect, -127 , 127);
-            TerrainList[1].Draw(camera, Effect, BasicEffect, 0, 127);
-            TerrainList[2].Draw(camera, Effect, BasicEffect, 127, 127);
-            TerrainList[3].Draw(camera, Effect, BasicEffect, -127, 0);
-            TerrainList[4].Draw(camera, Effect, BasicEffect);
-            TerrainList[5].Draw(camera, Effect, BasicEffect, 127, 0);
-            TerrainList[6].Draw(camera, Effect, BasicEffect, -127, -127);
-            TerrainList[7].Draw(camera, Effect, BasicEffect, 0,-127);
-            TerrainList[8].Draw(camera, Effect, BasicEffect, 127, -127);
+            TerrainList[0].Draw(camera, Effect, -127 , 127);
+            TerrainList[1].Draw(camera, Effect, 0, 127);
+            TerrainList[2].Draw(camera, Effect, 127, 127);
+            TerrainList[3].Draw(camera, Effect, -127, 0);
+            TerrainList[4].Draw(camera, Effect);
+            TerrainList[5].Draw(camera, Effect, 127, 0);
+            TerrainList[6].Draw(camera, Effect, -127, -127);
+            TerrainList[7].Draw(camera, Effect, 0,-127);
+            TerrainList[8].Draw(camera, Effect, 127, -127);
 
 
             ParticleManager.Draw((FreeCamera)camera);
@@ -258,9 +255,17 @@ namespace TankAnimationVN
         }
         private void MakeExplosion(Bullet Bullet)
         {
-            Vector3 impactPoint = new Vector3(
-            Bullet.Position.X, Bullet.Position.Y, Bullet.Position.Z);
+            Vector3 impactPoint = new Vector3(Bullet.Position.X, Bullet.Position.Y, Bullet.Position.Z);
             ParticleManager.MakeExplosion(impactPoint, 10000);
+        }
+
+        public void DoTankTransform()
+        {
+            //Preparo inclinazione
+            Vector3 tankAxis = CalculateTankDirection();
+            tankAxis.Normalize();
+            inclination += NextInclination(tankAxis);
+            PlayerTank.BoneTransform(0, Matrix.CreateRotationY(BodyRot) * Matrix.CreateFromAxisAngle(tankAxis, inclination));
         }
         private void UpdateBullet(Tank Shooter, GameTime gameTime)
         {
@@ -373,38 +378,31 @@ namespace TankAnimationVN
             float tankBackwardHeight = TerrainList[4].GetHeight(PlayerTank.Position.X - tankDirection.X, PlayerTank.Position.Z - tankDirection.Z);
             float tankHeight = TerrainList[4].GetHeight(PlayerTank.Position.X, PlayerTank.Position.Z);
 
-            //if (Math.Abs(tankHeight - tankForwardHeight) > 0.1f || Math.Abs(tankHeight - tankBackwardHeight)> 0.1f)                   //-------> Togli commento per bloccare scalata troppo ripida
-            if (Math.Abs(tankHeight - tankForwardHeight) > 10000f || Math.Abs(tankHeight - tankBackwardHeight) > 10000f)            //-------> Il carro scala qualsiasi montagna
+            //if (Math.Abs(NextInclination(tankDirection2)) > 0.5f)                   //-------> Togli commento per bloccare scalata troppo ripida
+            if (false)                                                                //-------> Il carro scala qualsiasi montagna
                 return false;
             else
                 return true;
         }
 
-        public float UpdateInclination()
+        public float NextInclination(Vector3 tankDirection)
         {
-            Vector3 tankDirection2 = CalculateTankDirection();
-            tankDirection2.Normalize();
-            Vector3 tankDirection = tankDirection2 * 0.15f;
+            Vector3 tankDirectionNormalized = tankDirection * 0.15f;
 
-            float tankForwardHeight = TerrainList[4].GetHeight(PlayerTank.Position.X + tankDirection.X, PlayerTank.Position.Z + tankDirection.Z);
-            Vector3 tankForwardPos = new Vector3(PlayerTank.Position.X + tankDirection.X, tankForwardHeight, PlayerTank.Position.Z + tankDirection.Z);
+            float tankForwardHeight = TerrainList[4].GetHeight(PlayerTank.Position.X + tankDirectionNormalized.X, PlayerTank.Position.Z + tankDirectionNormalized.Z);
+            Vector3 tankForwardPos = new Vector3(PlayerTank.Position.X + tankDirectionNormalized.X, tankForwardHeight, PlayerTank.Position.Z + tankDirectionNormalized.Z);
             Vector3 heigtdir = (tankForwardPos - PlayerTank.Position);
             heigtdir.Normalize();
 
-            float a = Vector3.Dot(heigtdir, tankDirection2);
-            inclination = (float)Math.Acos(a);
-            if (heigtdir.Y > tankDirection2.Y)
+            float inclination = (float)Math.Acos(Vector3.Dot(heigtdir, tankDirection));
+
+            if (heigtdir.Y > tankDirection.Y)
                 inclination = inclination * -1;
+
             if (Double.IsNaN(inclination))
                 inclination = 0f;
 
             return inclination;
-
-            //for (int i = 0; i < 12; i++)
-            //{
-            //    if(i == 1 || i == 5 || i == 9)          //Per adesso non funziona con il bone[0] principale
-            //         PlayerTank.BoneTransform(i, Matrix.CreateRotationX(inclination));
-            //}
         }
 
         public Vector3 CalculateTankDirection()
