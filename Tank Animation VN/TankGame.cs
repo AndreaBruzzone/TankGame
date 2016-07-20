@@ -28,6 +28,11 @@ namespace TankAnimationVN
         float enemyRot = 0;
         float inclination = 0;
 
+        bool playerIsOnFire = false;
+
+        Vector3 precEnemyFiringDirection = Vector3.Zero;
+        Vector3 EnemyFiringDirection = Vector3.Zero;
+
         bool enableForward = false, enableBackward = false;
 
         List<Terrain> TerrainList = new List<Terrain>();
@@ -61,9 +66,13 @@ namespace TankAnimationVN
             SFont = Content.Load<SpriteFont>("SpriteFont");
 
             for (int i = 0; i < 9; i++)
-                TerrainList.Add(new Terrain(GraphicsDevice, Content.Load<Texture2D>("heightmap4"), Content.Load<Texture2D>("sand"), Content.Load<Texture2D>("sand"), Content.Load<Texture2D>("vetta"), 1f, 128, 128, 5f));
-         
-            PlayerTank = new Tank(Content.Load<Model>("tank"), new Vector3(125.7f, TerrainList[4].GetHeight(125.7f, 120), 120),
+                if(i==4)
+                    TerrainList.Add(new Terrain(GraphicsDevice, Content.Load<Texture2D>("heightmap4"), Content.Load<Texture2D>("sand"), Content.Load<Texture2D>("sand"), Content.Load<Texture2D>("vetta"), 1f, 128, 128, 5f));
+                 else
+                    TerrainList.Add(new Terrain(GraphicsDevice, Content.Load<Texture2D>("heightmapext"), Content.Load<Texture2D>("sand"), Content.Load<Texture2D>("sand"), Content.Load<Texture2D>("vetta"), 1f, 128, 128, 5f));
+
+
+            PlayerTank = new Tank(Content.Load<Model>("tank"), new Vector3(10, TerrainList[4].GetHeight(10, 118), 118),
                                 new Quaternion(), new Vector3(0.001f, 0.001f, 0.001f), GraphicsDevice);
 
             EnemyTank = new Tank(Content.Load<Model>("enemy"), new Vector3(15, TerrainList[4].GetHeight(15, 118), 118),
@@ -199,11 +208,14 @@ namespace TankAnimationVN
                 UpdateBullet(tank, gameTime);
             }
 
-            enemyRot += 0.03f;
-            EnemyTank.BoneTransform(9, Matrix.CreateRotationY(enemyRot));
+            if (!playerIsOnFire)
+            {
+                enemyRot += 0.03f;
+                EnemyTank.BoneTransform(9, Matrix.CreateRotationY(enemyRot));
+            }
 
-            EnemyAutoFiring(); //-------------> La torretta gira in auto e spara a me
-
+            EnemyAutoFiring();
+        
             CheckBounds(PlayerTank);
 
             UpdateCamera(gameTime);
@@ -350,19 +362,69 @@ namespace TankAnimationVN
         public void EnemyAutoFiring()
         {
             Vector3 directionOfFiring = (PlayerTank.Position - EnemyTank.Position);
+
+            float heightDiff = PlayerTank.Position.Y - EnemyTank.Position.Y;
+            float angle = (float)Math.Asin(heightDiff / directionOfFiring.Length());
+            EnemyTank.BoneTransform(10, Matrix.CreateRotationX(-angle));
+
             float distance = directionOfFiring.Length();
             directionOfFiring.Normalize();
 
             Vector3 directionOfEnemyTurret = EnemyTank.Bullet.CalculateBulletDirection(EnemyTank);
-            if (directionOfEnemyTurret.X > directionOfFiring.X - 0.02f && directionOfEnemyTurret.X < directionOfFiring.X + 0.02f &
-                directionOfEnemyTurret.Z > directionOfFiring.Z - 0.02f && directionOfEnemyTurret.Z < directionOfFiring.Z + 0.02f)
+            directionOfEnemyTurret.Normalize();
+            if (AllowFire(directionOfEnemyTurret, directionOfFiring, distance, playerIsOnFire))
             {
-                if (!EnemyTank.Bullet.IsFired && distance < 8f)
+                playerIsOnFire = true;
+                EnemyFiringDirection = PlayerTank.Position - EnemyTank.Position;
+                if (precEnemyFiringDirection == Vector3.Zero)
+                    precEnemyFiringDirection = EnemyFiringDirection;
+
+                Vector2 EnemyFiringDirection2D = new Vector2(EnemyFiringDirection.X, EnemyFiringDirection.Z);
+                Vector2 precEnemyFiringDirection2D = new Vector2(precEnemyFiringDirection.X, precEnemyFiringDirection.Z);
+
+                float rotation = FindAngleBetweenTwoVectors(EnemyFiringDirection2D, precEnemyFiringDirection2D);
+                    
+                enemyRot -= rotation;
+                EnemyTank.BoneTransform(9, Matrix.CreateRotationY(enemyRot));
+
+                if (!EnemyTank.Bullet.IsFired && AllowFire(directionOfEnemyTurret, directionOfFiring, distance, playerIsOnFire))
                 {
                     EnemyTank.BulletFire();
                     SFXManager.Play("PlayerShot");
                 }
+                if (distance > 4f)
+                {
+                    playerIsOnFire = false;
+                    precEnemyFiringDirection = Vector3.Zero;
+                }
+
+                precEnemyFiringDirection = EnemyFiringDirection;
             }
+        }
+
+        public bool AllowFire(Vector3 directionOfEnemyTurret, Vector3 directionOfFiring, float distance, bool playerIsOnFire)
+        {
+            if (directionOfEnemyTurret.X > directionOfFiring.X - 0.02f && directionOfEnemyTurret.X < directionOfFiring.X + 0.02f & directionOfEnemyTurret.Z > directionOfFiring.Z - 0.02f && directionOfEnemyTurret.Z < directionOfFiring.Z + 0.02f & distance < 4f || playerIsOnFire == true)
+                return true;
+            else
+                return false;
+        }
+        public float FindAngleBetweenTwoVectors(Vector2 v1, Vector2 v2)
+        {
+            float angle;  
+            v1.Normalize();
+            v2.Normalize();
+
+            angle = (float)Math.Acos(Vector2.Dot(v1, v2)); 
+
+            if (Math.Abs(angle) < 0.001 || double.IsNaN(angle))
+                return 0;
+
+            int sign = (v1.Y * v2.X - v2.Y * v1.X) > 0 ? 1 : -1;
+
+            angle *= sign;
+
+            return angle;
         }
 
         public bool CheckInclinationForMove()
