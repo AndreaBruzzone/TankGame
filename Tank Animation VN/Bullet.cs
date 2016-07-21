@@ -17,7 +17,7 @@ namespace TankAnimationVN
                        Vector3 Scale, GraphicsDevice graphicsDevice) : base(Model,Position,Rotation,Scale,graphicsDevice)
         {
             IsFired = false;
-            BulletTime = new TimeClass(6000);
+            BulletTime = new TimeClass(4000);
             bulletDirection = new Vector3(1, 1, 1);
         }
 

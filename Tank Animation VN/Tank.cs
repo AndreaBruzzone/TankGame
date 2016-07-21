@@ -10,6 +10,24 @@ namespace TankAnimationVN
     public class Tank : TankAnimationVN.CModel
     {
         public Bullet Bullet;
+        public float canonRot = 0;
+        public float turretRot = 0;
+        public float wheelRot = 0;
+        public float steelRot = 0;
+        public float BodyRot = 0;
+        public float enemyRot = 0;
+        public float inclination = 0;
+
+        public Vector3 precEnemyFiringDirection = Vector3.Zero;
+        public Vector3 EnemyFiringDirection = Vector3.Zero;
+
+        public bool playerFiring = false;
+        public bool enableForward = false;
+        public bool enableBackward = false;
+
+        public int HitsCounter = 0;
+
+
         public Tank(Model Model, Vector3 Position, Quaternion Rotation,
                        Vector3 Scale, GraphicsDevice graphicsDevice) : base(Model, Position, Rotation, Scale, graphicsDevice)
         {

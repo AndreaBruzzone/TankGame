@@ -12,41 +12,21 @@ namespace TankAnimationVN
         GraphicsDeviceManager graphics;
         SpriteBatch spriteBatch;
         SpriteFont SFont;
-
+        TimeClass bulletTimer;
         List<Tank> TankList = new List<Tank>();
         Tank PlayerTank, EnemyTank;
-
         Camera camera;
         MouseState LastMouseState;
-        bool FirstRun = true;
-
-        float canonRot = 0;
-        float turretRot = 0;
-        float wheelRot = 0;
-        float steelRot = 0;
-        float BodyRot = 0;
-        float enemyRot = 0;
-        float inclination = 0;
-
-        bool playerIsOnFire = false;
-
-        Vector3 precEnemyFiringDirection = Vector3.Zero;
-        Vector3 EnemyFiringDirection = Vector3.Zero;
-
-        bool enableForward = false, enableBackward = false;
-
         List<Terrain> TerrainList = new List<Terrain>();
         Effect Effect;
+
+        bool FirstRun = true;
+        bool playerIsOnFire = false;       
 
         public Game1()
         {
             graphics = new GraphicsDeviceManager(this);
-            //graphics.PreferredBackBufferWidth = 800;
-            //graphics.PreferredBackBufferHeight = 400;
-            //graphics.SynchronizeWithVerticalRetrace = false;
-            //graphics.PreferMultiSampling = true;
             Content.RootDirectory = "Content";
-            //IsFixedTimeStep = true;
         }
 
         protected override void Initialize()
@@ -54,13 +34,14 @@ namespace TankAnimationVN
             this.IsMouseVisible = false;
             spriteBatch = new SpriteBatch(GraphicsDevice);
             LastMouseState = Mouse.GetState();
+            bulletTimer = new TimeClass(1500);
+            bulletTimer.Start();
             base.Initialize();
         }
 
 
         protected override void LoadContent()
         {
-
             Effect = Content.Load<Effect>("terrain");
 
             SFont = Content.Load<SpriteFont>("SpriteFont");
@@ -71,12 +52,12 @@ namespace TankAnimationVN
                  else
                     TerrainList.Add(new Terrain(GraphicsDevice, Content.Load<Texture2D>("heightmapext"), Content.Load<Texture2D>("sand"), Content.Load<Texture2D>("sand"), Content.Load<Texture2D>("vetta"), 1f, 128, 128, 5f));
 
-
             PlayerTank = new Tank(Content.Load<Model>("tank"), new Vector3(10, TerrainList[4].GetHeight(10, 118), 118),
                                 new Quaternion(), new Vector3(0.001f, 0.001f, 0.001f), GraphicsDevice);
 
             EnemyTank = new Tank(Content.Load<Model>("enemy"), new Vector3(15, TerrainList[4].GetHeight(15, 118), 118),
                                 new Quaternion(), new Vector3(0.001f, 0.001f, 0.001f), GraphicsDevice);
+   
 
             PlayerTank.Bullet = new Bullet(Content.Load<Model>("Bullet"), PlayerTank.GetTransformPaths(PlayerTank.Model.Bones[10]).Translation,
                                  new Quaternion(), new Vector3(0.001f, 0.001f, 0.001f), GraphicsDevice);
@@ -84,8 +65,10 @@ namespace TankAnimationVN
             EnemyTank.Bullet = new Bullet(Content.Load<Model>("Bullet"), EnemyTank.GetTransformPaths(EnemyTank.Model.Bones[10]).Translation,
                                  new Quaternion(), new Vector3(0.001f, 0.001f, 0.001f), GraphicsDevice);
 
+           
             TankList.Add(PlayerTank);
             TankList.Add(EnemyTank);
+
 
             camera = new FreeCamera(new Vector3(11, TerrainList[4].GetHeight(11, 61) + 2, 61), -20f, 0f, GraphicsDevice);
 
@@ -95,132 +78,31 @@ namespace TankAnimationVN
             SFXManager.AddEffect("EnemyShot", Content.Load<SoundEffect>("Shot2"));
 
             ParticleManager.Initialize(GraphicsDevice, Content.Load<Effect>("Particles"), Content.Load<Texture2D>("Explosion"));
-
         }
-
-        protected override void UnloadContent() { }
         protected override void Update(GameTime gameTime)
-        {
-            var delta = (float)gameTime.ElapsedGameTime.TotalSeconds;
-
-            if (FirstRun)
-            {
-                LastMouseState = Mouse.GetState();
-                FirstRun = false;
-            }
-            KeyboardState KState = Keyboard.GetState();
-            if (KState.IsKeyDown(Keys.Escape))
-                Exit();
-
-
-            if (KState.IsKeyDown(Keys.U))
-            {
-                canonRot -= 0.05f;
-                PlayerTank.BoneTransform(10, Matrix.CreateRotationX(canonRot));
-            }
-
-            if (KState.IsKeyDown(Keys.J))
-            {
-                canonRot += 0.05f;
-                PlayerTank.BoneTransform(10, Matrix.CreateRotationX(canonRot));
-            }
-            if (KState.IsKeyDown(Keys.L))
-            {
-                turretRot += 0.05f;
-                PlayerTank.BoneTransform(9, Matrix.CreateRotationY(turretRot));
-            }
-            if (KState.IsKeyDown(Keys.R))
-            {
-                turretRot -= 0.05f;
-                PlayerTank.BoneTransform(9, Matrix.CreateRotationY(turretRot));
-            }
-
-            if (KState.IsKeyDown(Keys.Left))
-            {
-                steelRot += 0.03f;
-                if (steelRot > 0.75f)
-                    steelRot = 0.75f;
-
-                PlayerTank.BoneTransform(3, Matrix.CreateRotationY(steelRot));
-                PlayerTank.BoneTransform(7, Matrix.CreateRotationY(steelRot));
-            }
-            if (KState.IsKeyDown(Keys.Right))
-            {
-                steelRot -= 0.03f;
-                if (steelRot < -0.75f)
-                    steelRot = -0.75f;
-                PlayerTank.BoneTransform(3, Matrix.CreateRotationY(steelRot));
-                PlayerTank.BoneTransform(7, Matrix.CreateRotationY(steelRot));
-
-            }
-
-            if (KState.IsKeyDown(Keys.Down))
-            {
-                if (CheckInclinationForMove() || enableBackward == true)
-                {
-                    if (CheckInclinationForMove())
-                        enableBackward = false;
-                    BodyRot -= delta * steelRot;
-
-                    DoTankTransform();
-
-                    wheelRot -= 0.05f;
-                    PlayerTank.RotateWheels(wheelRot);
-
-                    PlayerTank.Position += PlayerTank.GetTankTranslation() - PlayerTank.GetTankDirection() * 0.01f;
-                    PlayerTank.Position = new Vector3(PlayerTank.Position.X, TerrainList[4].GetHeight(PlayerTank.Position.X, PlayerTank.Position.Z), PlayerTank.Position.Z);
-                }
-                else
-                    enableForward = true;
-            }
-
-            if (KState.IsKeyDown(Keys.Up))
-            {
-                if (CheckInclinationForMove() || enableForward == true)
-                {
-                    if(CheckInclinationForMove())
-                        enableForward = false;
-                    
-                    BodyRot += delta * steelRot;
-
-                    DoTankTransform();
-
-                    wheelRot += 0.05f;
-                    PlayerTank.RotateWheels(wheelRot);
-
-                    PlayerTank.Position += PlayerTank.GetTankTranslation() + PlayerTank.GetTankDirection() * 0.01f;
-                    PlayerTank.Position = new Vector3(PlayerTank.Position.X, TerrainList[4].GetHeight(PlayerTank.Position.X, PlayerTank.Position.Z), PlayerTank.Position.Z);
-                }
-                else
-                    enableBackward = true;
-            }
-
-            if (KState.IsKeyDown(Keys.F))
-            {
-                if (PlayerTank.Bullet.IsFired == false)
-                    SFXManager.Play("PlayerShot");
-
-                PlayerTank.BulletFire();
-            }
-
+        {            
             foreach (Tank tank in TankList)
             {
                 UpdateBullet(tank, gameTime);
+
+                if (tank == PlayerTank)
+                {
+                    PlayerTankControls(gameTime);
+                    CheckBounds(tank);
+                    continue;
+                }
+
+                EnemyAutoFiring(gameTime, tank);
+
+                if (!playerIsOnFire)
+                {
+                    tank.turretRot += 0.03f;
+                    tank.BoneTransform(9, Matrix.CreateRotationY(tank.turretRot));
+                    tank.precEnemyFiringDirection = Vector3.Zero;
+                }
             }
-
-            if (!playerIsOnFire)
-            {
-                enemyRot += 0.03f;
-                EnemyTank.BoneTransform(9, Matrix.CreateRotationY(enemyRot));
-                precEnemyFiringDirection = Vector3.Zero;
-            }
-
-            EnemyAutoFiring();
-        
-            CheckBounds(PlayerTank);
-
+                      
             UpdateCamera(gameTime);
-
             base.Update(gameTime);
         }
 
@@ -229,11 +111,19 @@ namespace TankAnimationVN
             GraphicsDevice.Clear(Color.DarkGray);
             KeyboardState KState = Keyboard.GetState();
 
+            //spriteBatch.Begin();
+            //spriteBatch.DrawString(SFont, "Position :  " +
+            //      ((FreeCamera)camera).position.X.ToString() + "," +
+            //      ((FreeCamera)camera).position.Y.ToString() + "," +
+            //      ((FreeCamera)camera).position.Z.ToString() + ",",
+            //        new Vector2(10, 10), Color.Black);
+            //spriteBatch.End();
+
             spriteBatch.Begin();
-            spriteBatch.DrawString(SFont, "Position :  " +
-                  ((FreeCamera)camera).position.X.ToString() + "," +
-                  ((FreeCamera)camera).position.Y.ToString() + "," +
-                  ((FreeCamera)camera).position.Z.ToString() + ",",
+            spriteBatch.DrawString(SFont, "Player Hits :  " +
+                  PlayerTank.HitsCounter + "       " +
+                  "Enemy Hits :  " +
+                  EnemyTank.HitsCounter,
                     new Vector2(10, 10), Color.Black);
             spriteBatch.End();
 
@@ -249,19 +139,127 @@ namespace TankAnimationVN
                 }
             }
 
-            TerrainList[0].Draw(camera, Effect, -127 , 127);
+            TerrainDraw();
+
+            ParticleManager.Draw((FreeCamera)camera);
+            base.Draw(gameTime);
+        }
+
+        public void TerrainDraw()                               //Generale griglia 3x3 dei terreni, il 4 è il terreno di gioco
+        {
+            TerrainList[0].Draw(camera, Effect, -127, 127);
             TerrainList[1].Draw(camera, Effect, 0, 127);
             TerrainList[2].Draw(camera, Effect, 127, 127);
             TerrainList[3].Draw(camera, Effect, -127, 0);
             TerrainList[4].Draw(camera, Effect);
             TerrainList[5].Draw(camera, Effect, 127, 0);
             TerrainList[6].Draw(camera, Effect, -127, -127);
-            TerrainList[7].Draw(camera, Effect, 0,-127);
+            TerrainList[7].Draw(camera, Effect, 0, -127);
             TerrainList[8].Draw(camera, Effect, 127, -127);
+        }
+        public void PlayerTankControls(GameTime gameTime)
+        {
+            var delta = (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+            if (FirstRun)
+            {
+                LastMouseState = Mouse.GetState();
+                FirstRun = false;
+            }
+            KeyboardState KState = Keyboard.GetState();
+            if (KState.IsKeyDown(Keys.Escape))
+                Exit();
 
 
-            ParticleManager.Draw((FreeCamera)camera);
-            base.Draw(gameTime);
+            if (KState.IsKeyDown(Keys.U))
+            {
+                PlayerTank.canonRot -= 0.05f;
+                PlayerTank.BoneTransform(10, Matrix.CreateRotationX(PlayerTank.canonRot));
+            }
+
+            if (KState.IsKeyDown(Keys.J))
+            {
+                PlayerTank.canonRot += 0.05f;
+                PlayerTank.BoneTransform(10, Matrix.CreateRotationX(PlayerTank.canonRot));
+            }
+            if (KState.IsKeyDown(Keys.L))
+            {
+                PlayerTank.turretRot += 0.05f;
+                PlayerTank.BoneTransform(9, Matrix.CreateRotationY(PlayerTank.turretRot));
+            }
+            if (KState.IsKeyDown(Keys.R))
+            {
+                PlayerTank.turretRot -= 0.05f;
+                PlayerTank.BoneTransform(9, Matrix.CreateRotationY(PlayerTank.turretRot));
+            }
+
+            if (KState.IsKeyDown(Keys.Left))
+            {
+                PlayerTank.steelRot += 0.03f;
+                if (PlayerTank.steelRot > 0.75f)
+                    PlayerTank.steelRot = 0.75f;
+
+                PlayerTank.BoneTransform(3, Matrix.CreateRotationY(PlayerTank.steelRot));
+                PlayerTank.BoneTransform(7, Matrix.CreateRotationY(PlayerTank.steelRot));
+            }
+            if (KState.IsKeyDown(Keys.Right))
+            {
+                PlayerTank.steelRot -= 0.03f;
+                if (PlayerTank.steelRot < -0.75f)
+                    PlayerTank.steelRot = -0.75f;
+                PlayerTank.BoneTransform(3, Matrix.CreateRotationY(PlayerTank.steelRot));
+                PlayerTank.BoneTransform(7, Matrix.CreateRotationY(PlayerTank.steelRot));
+
+            }
+
+            if (KState.IsKeyDown(Keys.Down))
+            {
+                if (CheckInclinationForMove(PlayerTank) || PlayerTank.enableBackward == true)
+                {
+                    if (CheckInclinationForMove(PlayerTank))
+                        PlayerTank.enableBackward = false;
+                    PlayerTank.BodyRot -= delta * PlayerTank.steelRot;
+
+                    DoTankTransform(PlayerTank);
+
+                    PlayerTank.wheelRot -= 0.05f;
+                    PlayerTank.RotateWheels(PlayerTank.wheelRot);
+
+                    PlayerTank.Position += PlayerTank.GetTankTranslation() - PlayerTank.GetTankDirection() * 0.01f;
+                    PlayerTank.Position = new Vector3(PlayerTank.Position.X, TerrainList[4].GetHeight(PlayerTank.Position.X, PlayerTank.Position.Z), PlayerTank.Position.Z);
+                }
+                else
+                    PlayerTank.enableForward = true;
+            }
+
+            if (KState.IsKeyDown(Keys.Up))
+            {
+                if (CheckInclinationForMove(PlayerTank) || PlayerTank.enableForward == true)
+                {
+                    if (CheckInclinationForMove(PlayerTank))
+                        PlayerTank.enableForward = false;
+
+                    PlayerTank.BodyRot += delta * PlayerTank.steelRot;
+
+                    DoTankTransform(PlayerTank);
+
+                    PlayerTank.wheelRot += 0.05f;
+                    PlayerTank.RotateWheels(PlayerTank.wheelRot);
+
+                    PlayerTank.Position += PlayerTank.GetTankTranslation() + PlayerTank.GetTankDirection() * 0.01f;
+                    PlayerTank.Position = new Vector3(PlayerTank.Position.X, TerrainList[4].GetHeight(PlayerTank.Position.X, PlayerTank.Position.Z), PlayerTank.Position.Z);
+                }
+                else
+                    PlayerTank.enableBackward = true;
+            }
+
+            if (KState.IsKeyDown(Keys.F))
+            {
+                if (PlayerTank.Bullet.IsFired == false)
+                    SFXManager.Play("PlayerShot");
+
+                PlayerTank.BulletFire();
+            }
         }
         private void MakeExplosion(Bullet Bullet)
         {
@@ -269,13 +267,12 @@ namespace TankAnimationVN
             ParticleManager.MakeExplosion(impactPoint, 10000);
         }
 
-        public void DoTankTransform()
+        public void DoTankTransform(Tank tank)
         {
-            //Preparo inclinazione
-            Vector3 tankAxis = CalculateTankDirection();
+            Vector3 tankAxis = CalculateTankDirection(tank);
             tankAxis.Normalize();
-            inclination += NextInclination(tankAxis);
-            PlayerTank.BoneTransform(0, Matrix.CreateRotationY(BodyRot) * Matrix.CreateFromAxisAngle(tankAxis, inclination));
+            tank.inclination += NextInclination(tankAxis);
+            PlayerTank.BoneTransform(0, Matrix.CreateRotationY(tank.BodyRot) * Matrix.CreateFromAxisAngle(tankAxis, tank.inclination));
         }
         private void UpdateBullet(Tank Shooter, GameTime gameTime)
         {
@@ -307,6 +304,7 @@ namespace TankAnimationVN
                             MakeExplosion(Shooter.Bullet);
                             Shooter.Bullet.Position = Shooter.Position + Shooter.Bullet.BulletTranslation(Shooter) * new Vector3(0.01f, 0.01f, 0.01f) + Shooter.Bullet.bulletDirection * 0.04f;
                             SFXManager.Play("Explosion");
+                            Shooter.HitsCounter++;
                             Shooter.Bullet.IsFired = false;
                         }
                     }
@@ -352,59 +350,80 @@ namespace TankAnimationVN
 
         public bool CollisionCheck(Tank tank, Bullet bullet)
         {
-            BoundingSphere sphere1 = tank.BoundingSphere;
-            sphere1 = sphere1.Transform(tank.baseworld);
+            BoundingSphere tanksphere = tank.BoundingSphere;
+            tanksphere = tanksphere.Transform(tank.baseworld);
+            tanksphere.Center = tank.Position;
+            tanksphere.Radius = 0.25f;
 
-            if (sphere1.Intersects(bullet.BoundingSphere))
+            BoundingSphere bulletsphere = bullet.BoundingSphere;
+            bulletsphere = bulletsphere.Transform(tank.baseworld);
+            bulletsphere.Center = bullet.Position;
+
+            if (tanksphere.Intersects(bulletsphere))
                 return true;
             else
                 return false;
         }
-        public void EnemyAutoFiring()
+        public void EnemyAutoFiring(GameTime gameTime, Tank Enemy)
         {
-            Vector3 directionOfFiring = (PlayerTank.Position - EnemyTank.Position);
-
-            float heightDiff = PlayerTank.Position.Y - EnemyTank.Position.Y;
-            float angle = (float)Math.Asin(heightDiff / directionOfFiring.Length());
-            EnemyTank.BoneTransform(10, Matrix.CreateRotationX(-angle));
-
+            Vector3 directionOfEnemyTurret = Enemy.Bullet.CalculateBulletDirection(Enemy);
+            Vector3 directionOfFiring = (PlayerTank.Position - Enemy.Position);
             float distance = directionOfFiring.Length();
-            directionOfFiring.Normalize();
 
-            Vector3 directionOfEnemyTurret = EnemyTank.Bullet.CalculateBulletDirection(EnemyTank);
-            directionOfEnemyTurret.Normalize();
+            MakeEnemyCanonRotation(Enemy, directionOfFiring, directionOfEnemyTurret, distance);
+
             if (AllowFire(directionOfEnemyTurret, directionOfFiring, distance, playerIsOnFire))
             {
                 playerIsOnFire = true;
-                EnemyFiringDirection = PlayerTank.Position - EnemyTank.Position;
-                if (precEnemyFiringDirection == Vector3.Zero)
-                    precEnemyFiringDirection = EnemyFiringDirection;
 
-                Vector2 EnemyFiringDirection2D = new Vector2(EnemyFiringDirection.X, EnemyFiringDirection.Z);
-                Vector2 precEnemyFiringDirection2D = new Vector2(precEnemyFiringDirection.X, precEnemyFiringDirection.Z);
+                Enemy.EnemyFiringDirection = PlayerTank.Position - Enemy.Position;
+                if (Enemy.precEnemyFiringDirection == Vector3.Zero)
+                    Enemy.precEnemyFiringDirection = Enemy.EnemyFiringDirection;
 
-                float rotation = FindAngleBetweenTwoVectors(EnemyFiringDirection2D, precEnemyFiringDirection2D);
-                    
-                enemyRot -= rotation;
-                EnemyTank.BoneTransform(9, Matrix.CreateRotationY(enemyRot));
+                MakeEnemyTurretRotation(Enemy, Enemy.EnemyFiringDirection, Enemy.precEnemyFiringDirection);
 
-                if (!EnemyTank.Bullet.IsFired && AllowFire(directionOfEnemyTurret, directionOfFiring, distance, playerIsOnFire))
+                if (!Enemy.Bullet.IsFired && AllowFire(directionOfEnemyTurret, directionOfFiring, distance, playerIsOnFire) && bulletTimer.IsTimeEspired(gameTime))
                 {
-                    EnemyTank.BulletFire();
+                    Enemy.BulletFire();
+                    bulletTimer.Start();
                     SFXManager.Play("PlayerShot");
                 }
                 if (distance > 4f)
                 {
                     playerIsOnFire = false;
-                    precEnemyFiringDirection = Vector3.Zero;
+                    Enemy.precEnemyFiringDirection = Vector3.Zero;
                 }
 
-                precEnemyFiringDirection = EnemyFiringDirection;
+                Enemy.precEnemyFiringDirection = Enemy.EnemyFiringDirection;
             }
+        }
+
+        public void MakeEnemyCanonRotation(Tank Enemy, Vector3 directionOfFiring, Vector3 directionOfEnemyTurret, float distance)
+        {
+            directionOfEnemyTurret.Normalize();
+            directionOfFiring.Normalize();
+
+            float heightDiff = PlayerTank.Position.Y - Enemy.Position.Y;
+            float canonRotationAngle = (float)Math.Asin(heightDiff / distance);
+            Enemy.BoneTransform(10, Matrix.CreateRotationX(-canonRotationAngle));
+        }
+
+        public void MakeEnemyTurretRotation(Tank Enemy, Vector3 directionOfFiring, Vector3 precDirectionOfFiring)
+        {
+            Vector2 EnemyFiringDirection2D = new Vector2(directionOfFiring.X, directionOfFiring.Z);
+            Vector2 precEnemyFiringDirection2D = new Vector2(precDirectionOfFiring.X, precDirectionOfFiring.Z);
+
+            float TurretRotationAngle = FindAngleBetweenTwoVectors(EnemyFiringDirection2D, precEnemyFiringDirection2D);
+            Enemy.turretRot -= TurretRotationAngle;
+
+            Enemy.BoneTransform(9, Matrix.CreateRotationY(Enemy.turretRot));
         }
 
         public bool AllowFire(Vector3 directionOfEnemyTurret, Vector3 directionOfFiring, float distance, bool playerIsOnFire)
         {
+            directionOfEnemyTurret.Normalize();
+            directionOfFiring.Normalize();
+
             if (directionOfEnemyTurret.X > directionOfFiring.X - 0.02f && directionOfEnemyTurret.X < directionOfFiring.X + 0.02f & directionOfEnemyTurret.Z > directionOfFiring.Z - 0.02f && directionOfEnemyTurret.Z < directionOfFiring.Z + 0.02f & distance < 4f || playerIsOnFire == true)
                 return true;
             else
@@ -428,9 +447,9 @@ namespace TankAnimationVN
             return angle;
         }
 
-        public bool CheckInclinationForMove()
+        public bool CheckInclinationForMove(Tank tank)
         {
-            Vector3 tankDirection2 = CalculateTankDirection();
+            Vector3 tankDirection2 = CalculateTankDirection(tank);
             tankDirection2.Normalize();
             Vector3 tankDirection = tankDirection2 * 0.15f;
 
@@ -465,13 +484,13 @@ namespace TankAnimationVN
             return inclination;
         }
 
-        public Vector3 CalculateTankDirection()
+        public Vector3 CalculateTankDirection(Tank tank)
         {
             Vector3 scale;
             Quaternion rotation;
             Vector3 translation;
             Matrix CanonRelTransform = new Matrix();
-            CanonRelTransform = GetTransformPaths(PlayerTank.Model.Bones[0]);
+            CanonRelTransform = GetTransformPaths(tank.Model.Bones[0]);
             CanonRelTransform.Decompose(out scale, out rotation, out translation);
             return Vector3.Transform(Vector3.UnitZ, rotation);
         }

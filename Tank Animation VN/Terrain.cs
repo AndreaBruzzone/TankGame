@@ -64,7 +64,7 @@ namespace TankAnimationVN
             Plane plane = new Plane(p1, p2, p3);
             Ray ray = new Ray(new Vector3(x, 0, z), Vector3.Up);
             float? height = ray.Intersects(plane);
-            return height.HasValue ? height.Value+0.1f : 0f;
+            return height.HasValue ? height.Value : 0f;
         }
 
         private void ReadHeightMap(Texture2D heightMap,int terrainWidth,int terrainHeight,float heightScale)

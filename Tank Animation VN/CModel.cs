@@ -40,11 +40,18 @@ namespace TankAnimationVN
                 Matrix worldTransform = Matrix.CreateScale(Scale)
                     * Matrix.CreateTranslation(Position);
 
-                BoundingSphere transformed = boundingSphere;
-                transformed = transformed.Transform(worldTransform);
-                transformed.Radius = 0.15f;
+                BoundingSphere sphere = new BoundingSphere();
 
-                return transformed;
+                foreach (ModelMesh mesh in Model.Meshes)
+                {
+                    if (sphere.Radius == 0)
+                        sphere = mesh.BoundingSphere;
+                    else
+                        sphere = BoundingSphere.CreateMerged(sphere, mesh.BoundingSphere);
+                }
+
+                return sphere;
+
             }
         }
 
