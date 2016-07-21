@@ -42,6 +42,7 @@ namespace TankAnimationVN
 
                 BoundingSphere transformed = boundingSphere;
                 transformed = transformed.Transform(worldTransform);
+                transformed.Radius = 0.15f;
 
                 return transformed;
             }

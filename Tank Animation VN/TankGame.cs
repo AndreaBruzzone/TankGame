@@ -212,6 +212,7 @@ namespace TankAnimationVN
             {
                 enemyRot += 0.03f;
                 EnemyTank.BoneTransform(9, Matrix.CreateRotationY(enemyRot));
+                precEnemyFiringDirection = Vector3.Zero;
             }
 
             EnemyAutoFiring();
@@ -351,7 +352,7 @@ namespace TankAnimationVN
 
         public bool CollisionCheck(Tank tank, Bullet bullet)
         {
-            BoundingSphere sphere1 = tank.Model.Meshes[2].BoundingSphere;
+            BoundingSphere sphere1 = tank.BoundingSphere;
             sphere1 = sphere1.Transform(tank.baseworld);
 
             if (sphere1.Intersects(bullet.BoundingSphere))
