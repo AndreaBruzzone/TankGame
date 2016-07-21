@@ -19,6 +19,7 @@ namespace TankAnimationVN
         MouseState LastMouseState;
         List<Terrain> TerrainList = new List<Terrain>();
         Effect Effect;
+        Random random;
 
         bool FirstRun = true;
         bool playerIsOnFire = false;       
@@ -32,6 +33,7 @@ namespace TankAnimationVN
         protected override void Initialize()
         {
             this.IsMouseVisible = false;
+            random = new Random();
             spriteBatch = new SpriteBatch(GraphicsDevice);
             LastMouseState = Mouse.GetState();
             bulletTimer = new TimeClass(1500);
@@ -101,7 +103,14 @@ namespace TankAnimationVN
                     tank.precEnemyFiringDirection = Vector3.Zero;
                 }
             }
-                      
+
+            Vector3 distance = PlayerTank.Position - EnemyTank.Position;
+            if (distance.Length() > 6f)
+            {
+                EnemyTank.Position = PlayerTank.Position + new Vector3(random.Next(-5, 5), 0, random.Next(-5, 5));
+                EnemyTank.Position = new Vector3(EnemyTank.Position.X, TerrainList[4].GetHeight(EnemyTank.Position.X, EnemyTank.Position.Z), EnemyTank.Position.Z);
+            }                       
+                                
             UpdateCamera(gameTime);
             base.Update(gameTime);
         }
@@ -385,7 +394,7 @@ namespace TankAnimationVN
                     bulletTimer.Start();
                     SFXManager.Play("PlayerShot");
                 }
-                if (distance > 4f)
+                if (distance > 6f)
                 {
                     playerIsOnFire = false;
                     Enemy.precEnemyFiringDirection = Vector3.Zero;
@@ -421,7 +430,7 @@ namespace TankAnimationVN
             directionOfEnemyTurret.Normalize();
             directionOfFiring.Normalize();
 
-            if (directionOfEnemyTurret.X > directionOfFiring.X - 0.02f && directionOfEnemyTurret.X < directionOfFiring.X + 0.02f & directionOfEnemyTurret.Z > directionOfFiring.Z - 0.02f && directionOfEnemyTurret.Z < directionOfFiring.Z + 0.02f & distance < 4f || playerIsOnFire == true)
+            if (directionOfEnemyTurret.X > directionOfFiring.X - 0.02f && directionOfEnemyTurret.X < directionOfFiring.X + 0.02f & directionOfEnemyTurret.Z > directionOfFiring.Z - 0.02f && directionOfEnemyTurret.Z < directionOfFiring.Z + 0.02f & distance < 6f || playerIsOnFire == true)
                 return true;
             else
                 return false;
