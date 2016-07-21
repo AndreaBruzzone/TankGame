@@ -78,6 +78,8 @@ namespace TankAnimationVN
             }
 
         }
+
+
         private void buildBoundingSphere()
         {
             BoundingSphere sphere = new BoundingSphere(Vector3.Zero, 0);

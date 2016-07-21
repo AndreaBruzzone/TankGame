@@ -173,40 +173,40 @@ namespace TankAnimationVN
 
             if (KState.IsKeyDown(Keys.U))
             {
-                PlayerTank.canonRot -= 0.05f;
+                PlayerTank.canonRot -= 0.01f;
                 PlayerTank.BoneTransform(10, Matrix.CreateRotationX(PlayerTank.canonRot));
             }
 
             if (KState.IsKeyDown(Keys.J))
             {
-                PlayerTank.canonRot += 0.05f;
+                PlayerTank.canonRot += 0.01f;
                 PlayerTank.BoneTransform(10, Matrix.CreateRotationX(PlayerTank.canonRot));
             }
             if (KState.IsKeyDown(Keys.L))
             {
-                PlayerTank.turretRot += 0.05f;
+                PlayerTank.turretRot += 0.01f;
                 PlayerTank.BoneTransform(9, Matrix.CreateRotationY(PlayerTank.turretRot));
             }
             if (KState.IsKeyDown(Keys.R))
             {
-                PlayerTank.turretRot -= 0.05f;
+                PlayerTank.turretRot -= 0.01f;
                 PlayerTank.BoneTransform(9, Matrix.CreateRotationY(PlayerTank.turretRot));
             }
 
             if (KState.IsKeyDown(Keys.Left))
             {
-                PlayerTank.steelRot += 0.03f;
-                if (PlayerTank.steelRot > 0.75f)
-                    PlayerTank.steelRot = 0.75f;
+                PlayerTank.steelRot += 0.015f;
+                if (PlayerTank.steelRot > 0.5f)
+                    PlayerTank.steelRot = 0.5f;
 
                 PlayerTank.BoneTransform(3, Matrix.CreateRotationY(PlayerTank.steelRot));
                 PlayerTank.BoneTransform(7, Matrix.CreateRotationY(PlayerTank.steelRot));
             }
             if (KState.IsKeyDown(Keys.Right))
             {
-                PlayerTank.steelRot -= 0.03f;
-                if (PlayerTank.steelRot < -0.75f)
-                    PlayerTank.steelRot = -0.75f;
+                PlayerTank.steelRot -= 0.015f;
+                if (PlayerTank.steelRot < -0.5f)
+                    PlayerTank.steelRot = -0.5f;
                 PlayerTank.BoneTransform(3, Matrix.CreateRotationY(PlayerTank.steelRot));
                 PlayerTank.BoneTransform(7, Matrix.CreateRotationY(PlayerTank.steelRot));
 
@@ -317,20 +317,17 @@ namespace TankAnimationVN
             MouseState mouseState = Mouse.GetState();
             KeyboardState keyState = Keyboard.GetState();
 
-
-
             float deltaX = (float)LastMouseState.X - (float)mouseState.X;
             float deltaY = (float)LastMouseState.Y - (float)mouseState.Y;
 
             ((FreeCamera)camera).Rotate(deltaX * 0.01f, deltaY * 0.01f);
+            ((FreeCamera)camera).RotateAuto(PlayerTank.BodyRot);
 
             Vector3 translation = PlayerTank.GetTankTranslation();
 
-            ((FreeCamera)camera).position = PlayerTank.Position + PlayerTank.GetTankTranslation() + new Vector3(-0.4f, 0.35f, 0f);
+            ((FreeCamera)camera).position = CameraPosition(PlayerTank.GetTankDirection()) + PlayerTank.GetTankTranslation() + new Vector3(0f, 0.35f, 0f);
             ((FreeCamera)camera).Move(translation);
-
-
-            camera.Update();
+            ((FreeCamera)camera).Update();
             ParticleManager.Update(gameTime);
 
             LastMouseState = Mouse.GetState();
@@ -482,6 +479,15 @@ namespace TankAnimationVN
                 inclination = 0f;
 
             return inclination;
+        }
+        public Vector3 CameraPosition(Vector3 tankDirection)
+        {
+            Vector3 tankDirectionNormalized = tankDirection * 0.5f;
+
+            float tankBack = TerrainList[4].GetHeight(PlayerTank.Position.X - tankDirectionNormalized.X, PlayerTank.Position.Z - tankDirectionNormalized.Z);
+            Vector3 tankBackPos = new Vector3(PlayerTank.Position.X - tankDirectionNormalized.X, tankBack, PlayerTank.Position.Z - tankDirectionNormalized.Z);
+
+            return tankBackPos;
         }
 
         public Vector3 CalculateTankDirection(Tank tank)

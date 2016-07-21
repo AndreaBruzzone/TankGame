@@ -10,6 +10,9 @@ namespace TankAnimationVN
     {
         public float yaw { get; set; }
         public float pitch { get; set; }
+
+        public float angle = 0;
+
         public Vector3 position { get; set; }
         public Vector3 target { get; set; }
         private Vector3 translation;
@@ -27,6 +30,11 @@ namespace TankAnimationVN
             pitch += PitchChange;
         }
 
+        public void RotateAuto(float angleofrot)
+        {
+            angle = angleofrot;
+        }
+
         public void Move(Vector3 Translation)
         {
             translation += Translation;
@@ -34,7 +42,7 @@ namespace TankAnimationVN
 
         public override void Update()
         {
-            Matrix rotation = Matrix.CreateFromYawPitchRoll(yaw, pitch, 0);
+            Matrix rotation = Matrix.CreateFromYawPitchRoll(yaw, pitch, 0) * Matrix.CreateRotationY(angle);
 
             translation = Vector3.Transform(translation, rotation);
             position += translation;
