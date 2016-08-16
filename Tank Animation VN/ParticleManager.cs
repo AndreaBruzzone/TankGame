@@ -101,19 +101,19 @@ namespace TankAnimationVN
         {
             for (int i = 0; i < particleCount; i++)
             {
-                float duration = (float)(rand.Next(0, 20)) / 10f + 2;
-                float x = ((float)rand.NextDouble() - 0.5f) * 1.5f;
-                float y = ((float)rand.Next(1, 100)) / 10f;
-                float z = ((float)rand.NextDouble() - 0.5f) * 1.5f;
-                float s = (float)rand.NextDouble() + 0.0f;
+                float duration = (float)(rand.Next(0, 5)) / 1000f + 2;
+                float x = ((float)(rand.Next(0, 5)) - 0.2f) * 1.5f;
+                float y = ((float)(rand.Next(0, 5)) - 0.2f) * 1.5f;
+                float z = ((float)(rand.Next(0, 5)) - 0.2f) * 1.5f;
+                float s = (float)(rand.Next(0, 5)) + 0.0f;
                 Vector3 direction = Vector3.Normalize(
                     new Vector3(x, y, z)) *
-                    (((float)rand.NextDouble() * 3f) + 6f);
+                    ((1 * 3f) + 2f);
 
                 AddParticle(
-                    position + new Vector3(0, -2, 0),
+                    position,
                     direction,
-                    duration, s);
+                    0.4f, 0.3f);
             }
         }
         #endregion

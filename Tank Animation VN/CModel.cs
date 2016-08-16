@@ -15,6 +15,7 @@ namespace TankAnimationVN
         public Matrix[] modelTransforms;
         public Matrix[] originalTransforms;
         public Matrix baseworld;
+        public float rotation;
         private BoundingSphere boundingSphere;
         public CModel(Model Model, Vector3 Position, Quaternion Rotation,
                        Vector3 Scale, GraphicsDevice graphicsDevice)
@@ -28,6 +29,7 @@ namespace TankAnimationVN
             this.Position = Position;
             this.Rotation = Rotation;
             this.Scale = Scale;
+            rotation = 0f;
         }
 
 

@@ -20,6 +20,10 @@ namespace TankAnimationVN
         List<Terrain> TerrainList = new List<Terrain>();
         Effect Effect;
         Random random;
+        CModel Arrow;
+
+        int bulletTimerCounter = 3000; //secondi
+        int enemySpeedUpCnt = 0;
 
         bool FirstRun = true;
         bool playerIsOnFire = false;       
@@ -67,12 +71,17 @@ namespace TankAnimationVN
             EnemyTank.Bullet = new Bullet(Content.Load<Model>("Bullet"), EnemyTank.GetTransformPaths(EnemyTank.Model.Bones[10]).Translation,
                                  new Quaternion(), new Vector3(0.001f, 0.001f, 0.001f), GraphicsDevice);
 
-           
+            //Arrow = new CModel(Content.Load<Model>("bull"), PlayerTank.Position + new Vector3(0,0.3f,0),
+            //                    new Quaternion(), new Vector3(0.005f, 0.005f, 0.005f), GraphicsDevice);
+
             TankList.Add(PlayerTank);
             TankList.Add(EnemyTank);
 
 
             camera = new FreeCamera(new Vector3(11, TerrainList[4].GetHeight(11, 61) + 2, 61), -20f, 0f, GraphicsDevice);
+
+            Arrow = new CModel(Content.Load<Model>("bull"), PlayerTank.Position,
+                                new Quaternion(), new Vector3(0.005f, 0.005f, 0.005f), GraphicsDevice);
 
             SFXManager.AddEffect("Explosion", Content.Load<SoundEffect>("Explosion1"));
             SFXManager.AddEffect("Jump", Content.Load<SoundEffect>("Jump"));
@@ -109,8 +118,9 @@ namespace TankAnimationVN
             {
                 EnemyTank.Position = PlayerTank.Position + new Vector3(random.Next(-5, 5), 0, random.Next(-5, 5));
                 EnemyTank.Position = new Vector3(EnemyTank.Position.X, TerrainList[4].GetHeight(EnemyTank.Position.X, EnemyTank.Position.Z), EnemyTank.Position.Z);
-            }                       
-                                
+            }
+
+            updateArrow();
             UpdateCamera(gameTime);
             base.Update(gameTime);
         }
@@ -149,6 +159,8 @@ namespace TankAnimationVN
             }
 
             TerrainDraw();
+
+            //Arrow.Draw(camera.view, camera.projection);
 
             ParticleManager.Draw((FreeCamera)camera);
             base.Draw(gameTime);
@@ -272,8 +284,8 @@ namespace TankAnimationVN
         }
         private void MakeExplosion(Bullet Bullet)
         {
-            Vector3 impactPoint = new Vector3(Bullet.Position.X, Bullet.Position.Y, Bullet.Position.Z);
-            ParticleManager.MakeExplosion(impactPoint, 10000);
+            Vector3 impactPoint = new Vector3(Bullet.Position.X, TerrainList[4].GetHeight(Bullet.Position.X, Bullet.Position.Z), Bullet.Position.Z);
+            ParticleManager.MakeExplosion(impactPoint, 50);
         }
 
         public void DoTankTransform(Tank tank)
@@ -315,6 +327,29 @@ namespace TankAnimationVN
                             SFXManager.Play("Explosion");
                             Shooter.HitsCounter++;
                             Shooter.Bullet.IsFired = false;
+                            if (Shooter == PlayerTank)
+                            {
+                                int xCoord = random.Next(-5, 5);
+                                int zCoord = random.Next(-5, 5);
+                                if (xCoord < 2 && xCoord > -2)
+                                    if (xCoord < 0)
+                                        xCoord -= 2;
+                                    else
+                                        xCoord += 2;
+                                if (zCoord < 2 && zCoord > -2)
+                                    if (zCoord < 0)
+                                        zCoord -= 2;
+                                    else
+                                        zCoord += 2;
+                                tank.Position = PlayerTank.Position + new Vector3(xCoord, 0, zCoord);
+                                bulletTimerCounter = 11000;
+                                enemySpeedUpCnt = 0;
+                            }
+                            if(Shooter == EnemyTank)
+                            {
+                                bulletTimerCounter = 11000;
+                                enemySpeedUpCnt = 0;
+                            }
                         }
                     }
                 }
@@ -359,7 +394,7 @@ namespace TankAnimationVN
             BoundingSphere tanksphere = tank.BoundingSphere;
             tanksphere = tanksphere.Transform(tank.baseworld);
             tanksphere.Center = tank.Position;
-            tanksphere.Radius = 0.25f;
+            tanksphere.Radius = 0.155f;
 
             BoundingSphere bulletsphere = bullet.BoundingSphere;
             bulletsphere = bulletsphere.Transform(tank.baseworld);
@@ -391,6 +426,15 @@ namespace TankAnimationVN
                 if (!Enemy.Bullet.IsFired && AllowFire(directionOfEnemyTurret, directionOfFiring, distance, playerIsOnFire) && bulletTimer.IsTimeEspired(gameTime))
                 {
                     Enemy.BulletFire();
+                    enemySpeedUpCnt++;
+                    if (enemySpeedUpCnt != (bulletTimerCounter/1000))
+                        bulletTimerCounter = bulletTimerCounter - 1000;
+                    else
+                    {
+                        bulletTimerCounter = 1000;
+                        enemySpeedUpCnt = (bulletTimerCounter / 1000)-2;
+                    }
+                    bulletTimer = new TimeClass(bulletTimerCounter);
                     bulletTimer.Start();
                     SFXManager.Play("PlayerShot");
                 }
@@ -518,6 +562,30 @@ namespace TankAnimationVN
                 bone = bone.Parent;
             }
             return result;
+        }
+
+        public void updateArrow()
+        {
+            Vector3 scale;
+            Quaternion rotation;
+            Vector3 translation;
+            Matrix ArrowTransform = new Matrix();
+            ArrowTransform = GetTransformPaths(Arrow.Model.Bones[0]);
+            ArrowTransform.Decompose(out scale, out rotation, out translation);
+            Vector3 Arrow3dDir = Vector3.Transform(Vector3.UnitZ, rotation);
+            Vector3 directionToPoint3d = Arrow.Position - EnemyTank.Position;
+
+            Vector2 Arrow2dDir = new Vector2(Arrow3dDir.X, Arrow3dDir.Z);
+            Vector2 directionToPoint2d = new Vector2(directionToPoint3d.X, directionToPoint3d.Z);
+
+            float angle = FindAngleBetweenTwoVectors(Arrow2dDir, directionToPoint2d);
+            Arrow.rotation -= angle;
+            //Arrow.BoneTransform(0, Matrix.CreateRotationY(Arrow.rotation));
+            Arrow.BoneTransform(0, Matrix.CreateFromAxisAngle(Vector3.UnitY, Arrow.rotation));
+
+            Arrow.Position = PlayerTank.Position + new Vector3(0.05f, 0.19f, -0.055f);
+
+
         }
     }
 }
