@@ -16,7 +16,8 @@ namespace TankAnimationVN
         public float steelRot = 0;
         public float BodyRot = 0;
         public float enemyRot = 0;
-        public float inclination = 0;
+        public float yinclination = 0;
+        public float zinclination = 0;
 
         public Vector3 precEnemyFiringDirection = Vector3.Zero;
         public Vector3 EnemyFiringDirection = Vector3.Zero;

@@ -26,7 +26,8 @@ namespace TankAnimationVN
         int enemySpeedUpCnt = 0;
 
         bool FirstRun = true;
-        bool playerIsOnFire = false;       
+        bool playerIsOnFire = false;
+        float zinc = 0;
 
         public Game1()
         {
@@ -291,9 +292,13 @@ namespace TankAnimationVN
         public void DoTankTransform(Tank tank)
         {
             Vector3 tankAxis = CalculateTankDirection(tank);
+            Vector3 tankZAxis = CalculateTankPerpDir(PlayerTank);
             tankAxis.Normalize();
-            tank.inclination += NextInclination(tankAxis);
-            PlayerTank.BoneTransform(0, Matrix.CreateRotationY(tank.BodyRot) * Matrix.CreateFromAxisAngle(tankAxis, tank.inclination));
+
+            tank.yinclination += NextInclination(tankAxis);
+
+            tank.zinclination += ZInclination(tankZAxis);
+            PlayerTank.BoneTransform(0, Matrix.CreateRotationY(tank.BodyRot) * Matrix.CreateFromAxisAngle(tankAxis, tank.yinclination) * Matrix.CreateFromAxisAngle(tankZAxis, tank.zinclination));
         }
         private void UpdateBullet(Tank Shooter, GameTime gameTime)
         {
@@ -533,6 +538,25 @@ namespace TankAnimationVN
 
             return inclination;
         }
+        public float ZInclination(Vector3 tankDirection)
+        {
+            Vector3 tankDirectionNormalized = tankDirection * 0.08f;
+
+            float tankRightHeight = TerrainList[4].GetHeight(PlayerTank.Position.X + tankDirectionNormalized.X, PlayerTank.Position.Z + tankDirectionNormalized.Z);
+            Vector3 tankRightPos = new Vector3(PlayerTank.Position.X + tankDirectionNormalized.X, tankRightHeight, PlayerTank.Position.Z + tankDirectionNormalized.Z);
+            Vector3 Rightheigtdir = (tankRightPos - PlayerTank.Position);
+            Rightheigtdir.Normalize();
+
+            float inclination = (float)Math.Acos(Vector3.Dot(Rightheigtdir, tankDirection));
+
+            if (Rightheigtdir.Y > tankDirection.Y)
+                inclination = inclination * -1;
+
+            if (Double.IsNaN(inclination))
+                inclination = 0f;
+
+            return inclination;
+        }
         public Vector3 CameraPosition(Vector3 tankDirection)
         {
             Vector3 tankDirectionNormalized = tankDirection * 0.5f;
@@ -552,6 +576,18 @@ namespace TankAnimationVN
             CanonRelTransform = GetTransformPaths(tank.Model.Bones[0]);
             CanonRelTransform.Decompose(out scale, out rotation, out translation);
             return Vector3.Transform(Vector3.UnitZ, rotation);
+
+        }
+        public Vector3 CalculateTankPerpDir(Tank tank)
+        {
+            Vector3 scale;
+            Quaternion rotation;
+            Vector3 translation;
+            Matrix CanonRelTransform = new Matrix();
+            CanonRelTransform = GetTransformPaths(tank.Model.Bones[0]);
+            CanonRelTransform.Decompose(out scale, out rotation, out translation);
+
+            return Vector3.Transform(Vector3.UnitZ, rotation * Quaternion.CreateFromAxisAngle(Vector3.UnitY, MathHelper.ToRadians(-90)));
         }
         public Matrix GetTransformPaths(ModelBone bone)
         {
