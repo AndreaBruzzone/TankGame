@@ -31,9 +31,7 @@ namespace TankAnimationVN
 
         public Tank(Model Model, Vector3 Position, Quaternion Rotation,
                        Vector3 Scale, GraphicsDevice graphicsDevice) : base(Model, Position, Rotation, Scale, graphicsDevice)
-        {
-
-        }
+        {        }
 
         public void RotateWheels(float rotation)
         {

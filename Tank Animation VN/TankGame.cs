@@ -27,7 +27,6 @@ namespace TankAnimationVN
 
         bool FirstRun = true;
         bool playerIsOnFire = false;
-        float zinc = 0;
 
         public Game1()
         {
@@ -123,6 +122,7 @@ namespace TankAnimationVN
 
             updateArrow();
             UpdateCamera(gameTime);
+
             base.Update(gameTime);
         }
 
@@ -450,7 +450,7 @@ namespace TankAnimationVN
                 }
 
                 Enemy.precEnemyFiringDirection = Enemy.EnemyFiringDirection;
-            }
+                }
         }
 
         public void MakeEnemyCanonRotation(Tank Enemy, Vector3 directionOfFiring, Vector3 directionOfEnemyTurret, float distance)
@@ -521,7 +521,7 @@ namespace TankAnimationVN
 
         public float NextInclination(Vector3 tankDirection)
         {
-            Vector3 tankDirectionNormalized = tankDirection * 0.15f;
+            Vector3 tankDirectionNormalized = tankDirection * 0.14f;
 
             float tankForwardHeight = TerrainList[4].GetHeight(PlayerTank.Position.X + tankDirectionNormalized.X, PlayerTank.Position.Z + tankDirectionNormalized.Z);
             Vector3 tankForwardPos = new Vector3(PlayerTank.Position.X + tankDirectionNormalized.X, tankForwardHeight, PlayerTank.Position.Z + tankDirectionNormalized.Z);
@@ -540,7 +540,7 @@ namespace TankAnimationVN
         }
         public float ZInclination(Vector3 tankDirection)
         {
-            Vector3 tankDirectionNormalized = tankDirection * 0.08f;
+            Vector3 tankDirectionNormalized = tankDirection * 0.025f;
 
             float tankRightHeight = TerrainList[4].GetHeight(PlayerTank.Position.X + tankDirectionNormalized.X, PlayerTank.Position.Z + tankDirectionNormalized.Z);
             Vector3 tankRightPos = new Vector3(PlayerTank.Position.X + tankDirectionNormalized.X, tankRightHeight, PlayerTank.Position.Z + tankDirectionNormalized.Z);
