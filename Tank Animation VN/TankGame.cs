@@ -22,7 +22,7 @@ namespace TankAnimationVN
         Random random;
         CModel Arrow;
 
-        int bulletTimerCounter = 3000; //secondi
+        int bulletTimerCounter = 3000;
         int enemySpeedUpCnt = 0;
 
         bool FirstRun = true;
@@ -44,7 +44,6 @@ namespace TankAnimationVN
             bulletTimer.Start();
             base.Initialize();
         }
-
 
         protected override void LoadContent()
         {
@@ -90,6 +89,7 @@ namespace TankAnimationVN
 
             ParticleManager.Initialize(GraphicsDevice, Content.Load<Effect>("Particles"), Content.Load<Texture2D>("Explosion"));
         }
+
         protected override void Update(GameTime gameTime)
         {            
             foreach (Tank tank in TankList)
@@ -120,7 +120,8 @@ namespace TankAnimationVN
                 EnemyTank.Position = new Vector3(EnemyTank.Position.X, TerrainList[4].GetHeight(EnemyTank.Position.X, EnemyTank.Position.Z), EnemyTank.Position.Z);
             }
 
-            updateArrow();
+            //updateArrow();    Utilizzata come debug per vedere il puntamento di vettori calcolati
+
             UpdateCamera(gameTime);
 
             base.Update(gameTime);
@@ -161,13 +162,13 @@ namespace TankAnimationVN
 
             TerrainDraw();
 
-            //Arrow.Draw(camera.view, camera.projection);
+            //Arrow.Draw(camera.view, camera.projection); Utilizzata come debug per vedere il puntamento di vettori calcolati
 
             ParticleManager.Draw((FreeCamera)camera);
             base.Draw(gameTime);
         }
 
-        public void TerrainDraw()                               //Generale griglia 3x3 dei terreni, il 4 è il terreno di gioco
+        public void TerrainDraw()                               //Generale griglia 3x3 dei terreni, il [4] è il terreno effettivo di gioco
         {
             TerrainList[0].Draw(camera, Effect, -127, 127);
             TerrainList[1].Draw(camera, Effect, 0, 127);
@@ -179,6 +180,7 @@ namespace TankAnimationVN
             TerrainList[7].Draw(camera, Effect, 0, -127);
             TerrainList[8].Draw(camera, Effect, 127, -127);
         }
+
         public void PlayerTankControls(GameTime gameTime)
         {
             var delta = (float)gameTime.ElapsedGameTime.TotalSeconds;
@@ -283,28 +285,34 @@ namespace TankAnimationVN
                 PlayerTank.BulletFire();
             }
         }
-        private void MakeExplosion(Bullet Bullet)
+
+        private void MakeExplosion(Bullet Bullet)  //Genera animazione 3D per esplosione proiettile
         {
             Vector3 impactPoint = new Vector3(Bullet.Position.X, TerrainList[4].GetHeight(Bullet.Position.X, Bullet.Position.Z), Bullet.Position.Z);
             ParticleManager.MakeExplosion(impactPoint, 50);
         }
 
-        public void DoTankTransform(Tank tank)
+        public void DoTankTransform(Tank tank)  //Calcola e compie le inclinazioni con il terreno
         {
-            Vector3 tankAxis = CalculateTankDirection(tank);
-            Vector3 tankZAxis = CalculateTankPerpDir(PlayerTank);
+            Vector3 tankAxis = CalculateTankDirection(tank); //Direzione del carro
+            Vector3 tankZAxis = CalculateTankPerpDir(tank);  //Direzione laterale rispetto alla direzione del carro
             tankAxis.Normalize();
+            tankZAxis.Normalize();
 
-            tank.yinclination += NextInclination(tankAxis);
+            tank.yinclination += NextInclination(tankAxis);  //Calcola l'angolo di inclinazione su Y
+            tank.zinclination += ZInclination(tankZAxis);    //Calcola l'angolo di inclinazione su Z
 
-            tank.zinclination += ZInclination(tankZAxis);
-            PlayerTank.BoneTransform(0, Matrix.CreateRotationY(tank.BodyRot) * Matrix.CreateFromAxisAngle(tankAxis, tank.yinclination) * Matrix.CreateFromAxisAngle(tankZAxis, tank.zinclination));
+            PlayerTank.BoneTransform(0, 
+                Matrix.CreateRotationY(tank.BodyRot) *
+                Matrix.CreateFromAxisAngle(tankAxis, tank.yinclination) *   //Applico rotazione e inclinazione)
+                Matrix.CreateFromAxisAngle(tankZAxis, tank.zinclination));
         }
-        private void UpdateBullet(Tank Shooter, GameTime gameTime)
+
+        private void UpdateBullet(Tank Shooter, GameTime gameTime)  //Gestisce la dinamica della collisione dei proiettili
         {
             if (Shooter.Bullet.IsFired == true)
             {
-                if (Shooter.Bullet.Position.Y > TerrainList[4].GetHeight(Shooter.Bullet.Position.X, Shooter.Bullet.Position.Z)) //Controllo la posizione del proiettile
+                if (Shooter.Bullet.Position.Y > TerrainList[4].GetHeight(Shooter.Bullet.Position.X, Shooter.Bullet.Position.Z)) //Controllo se il proiettile è in volo
                 {
                     Shooter.Bullet.Position += Shooter.Bullet.bulletDirection * 0.05f - 0.001f * Vector3.UnitY;
                 }
@@ -325,14 +333,14 @@ namespace TankAnimationVN
                 {
                     if (CollisionCheck(tank, Shooter.Bullet)) //Proiettile colpisce un altro carro
                     {
-                        if (Shooter != tank)
+                        if (Shooter != tank)    //Proiettile del nemico
                         {
                             MakeExplosion(Shooter.Bullet);
                             Shooter.Bullet.Position = Shooter.Position + Shooter.Bullet.BulletTranslation(Shooter) * new Vector3(0.01f, 0.01f, 0.01f) + Shooter.Bullet.bulletDirection * 0.04f;
                             SFXManager.Play("Explosion");
                             Shooter.HitsCounter++;
                             Shooter.Bullet.IsFired = false;
-                            if (Shooter == PlayerTank)
+                            if (Shooter == PlayerTank)      //Gestione comparsa del carro nemico
                             {
                                 int xCoord = random.Next(-5, 5);
                                 int zCoord = random.Next(-5, 5);
@@ -382,7 +390,7 @@ namespace TankAnimationVN
             LastMouseState = Mouse.GetState();
         }
 
-        public void CheckBounds(Tank tank)
+        public void CheckBounds(Tank tank) //Verifico posizione del carro nei confini della mappa
         {
             if (tank.Position.X > 126 )
                 tank.Position = new Vector3(2, TerrainList[4].GetHeight(2, tank.Position.Z), tank.Position.Z);
@@ -394,7 +402,7 @@ namespace TankAnimationVN
                 tank.Position = new Vector3(tank.Position.X, TerrainList[4].GetHeight(tank.Position.X, 126), 126);
         }
 
-        public bool CollisionCheck(Tank tank, Bullet bullet)
+        public bool CollisionCheck(Tank tank, Bullet bullet) //Gestisce collisione Proiettile-Carro
         {
             BoundingSphere tanksphere = tank.BoundingSphere;
             tanksphere = tanksphere.Transform(tank.baseworld);
@@ -410,7 +418,8 @@ namespace TankAnimationVN
             else
                 return false;
         }
-        public void EnemyAutoFiring(GameTime gameTime, Tank Enemy)
+
+        public void EnemyAutoFiring(GameTime gameTime, Tank Enemy) //Gestione AI carro nemico
         {
             Vector3 directionOfEnemyTurret = Enemy.Bullet.CalculateBulletDirection(Enemy);
             Vector3 directionOfFiring = (PlayerTank.Position - Enemy.Position);
@@ -484,6 +493,7 @@ namespace TankAnimationVN
             else
                 return false;
         }
+
         public float FindAngleBetweenTwoVectors(Vector2 v1, Vector2 v2)
         {
             float angle;  
@@ -538,6 +548,7 @@ namespace TankAnimationVN
 
             return inclination;
         }
+
         public float ZInclination(Vector3 tankDirection)
         {
             Vector3 tankDirectionNormalized = tankDirection * 0.025f;
@@ -557,6 +568,7 @@ namespace TankAnimationVN
 
             return inclination;
         }
+
         public Vector3 CameraPosition(Vector3 tankDirection)
         {
             Vector3 tankDirectionNormalized = tankDirection * 0.5f;
@@ -578,6 +590,7 @@ namespace TankAnimationVN
             return Vector3.Transform(Vector3.UnitZ, rotation);
 
         }
+
         public Vector3 CalculateTankPerpDir(Tank tank)
         {
             Vector3 scale;
@@ -586,9 +599,9 @@ namespace TankAnimationVN
             Matrix CanonRelTransform = new Matrix();
             CanonRelTransform = GetTransformPaths(tank.Model.Bones[0]);
             CanonRelTransform.Decompose(out scale, out rotation, out translation);
-
             return Vector3.Transform(Vector3.UnitZ, rotation * Quaternion.CreateFromAxisAngle(Vector3.UnitY, MathHelper.ToRadians(-90)));
         }
+
         public Matrix GetTransformPaths(ModelBone bone)
         {
             Matrix result = Matrix.Identity;
@@ -600,7 +613,7 @@ namespace TankAnimationVN
             return result;
         }
 
-        public void updateArrow()
+        public void updateArrow()  //Funzione per debug direzione vettore
         {
             Vector3 scale;
             Quaternion rotation;
