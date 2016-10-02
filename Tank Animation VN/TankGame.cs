@@ -114,10 +114,16 @@ namespace TankAnimationVN
             }
 
             Vector3 distance = PlayerTank.Position - EnemyTank.Position;
+            Vector3 oldEnemyPosition = EnemyTank.Position;
             if (distance.Length() > 6f)
             {
+
                 EnemyTank.Position = PlayerTank.Position + new Vector3(random.Next(-5, 5), 0, random.Next(-5, 5));
-                EnemyTank.Position = new Vector3(EnemyTank.Position.X, TerrainList[4].GetHeight(EnemyTank.Position.X, EnemyTank.Position.Z), EnemyTank.Position.Z);
+                
+                //if (TerrainList[4].GetHeight(EnemyTank.Position.X, EnemyTank.Position.Z) < 0.1f)
+                    EnemyTank.Position = new Vector3(EnemyTank.Position.X, TerrainList[4].GetHeight(EnemyTank.Position.X, EnemyTank.Position.Z), EnemyTank.Position.Z);
+                //else
+                    //EnemyTank.Position = oldEnemyPosition;
             }
 
             updateArrow();
@@ -193,23 +199,23 @@ namespace TankAnimationVN
                 Exit();
 
 
-            if (KState.IsKeyDown(Keys.U))
+            if (KState.IsKeyDown(Keys.W))
             {
                 PlayerTank.canonRot -= 0.01f;
                 PlayerTank.BoneTransform(10, Matrix.CreateRotationX(PlayerTank.canonRot));
             }
 
-            if (KState.IsKeyDown(Keys.J))
+            if (KState.IsKeyDown(Keys.S))
             {
                 PlayerTank.canonRot += 0.01f;
                 PlayerTank.BoneTransform(10, Matrix.CreateRotationX(PlayerTank.canonRot));
             }
-            if (KState.IsKeyDown(Keys.L))
+            if (KState.IsKeyDown(Keys.A))
             {
                 PlayerTank.turretRot += 0.01f;
                 PlayerTank.BoneTransform(9, Matrix.CreateRotationY(PlayerTank.turretRot));
             }
-            if (KState.IsKeyDown(Keys.R))
+            if (KState.IsKeyDown(Keys.D))
             {
                 PlayerTank.turretRot -= 0.01f;
                 PlayerTank.BoneTransform(9, Matrix.CreateRotationY(PlayerTank.turretRot));
