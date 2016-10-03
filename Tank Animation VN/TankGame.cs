@@ -361,6 +361,7 @@ namespace TankAnimationVN
                                     else
                                         zCoord += 2;
                                 tank.Position = PlayerTank.Position + new Vector3(xCoord, 0, zCoord);
+                                tank.Position = new Vector3(tank.Position.X, TerrainList[4].GetHeight(tank.Position.X, tank.Position.Z), tank.Position.Z);
                                 bulletTimerCounter = 11000;
                                 enemySpeedUpCnt = 0;
                             }
