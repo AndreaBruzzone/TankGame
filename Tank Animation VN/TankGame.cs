@@ -57,7 +57,7 @@ namespace TankAnimationVN
                  else
                     TerrainList.Add(new Terrain(GraphicsDevice, Content.Load<Texture2D>("heightmapext"), Content.Load<Texture2D>("sand"), Content.Load<Texture2D>("sand"), Content.Load<Texture2D>("vetta"), 1f, 128, 128, 5f));
 
-            PlayerTank = new Tank(Content.Load<Model>("tank"), new Vector3(10, TerrainList[4].GetHeight(10, 118), 118),
+            PlayerTank = new Tank(Content.Load<Model>("tank"), new Vector3(100, TerrainList[4].GetHeight(100, 100), 100),
                                 new Quaternion(), new Vector3(0.001f, 0.001f, 0.001f), GraphicsDevice);
 
             EnemyTank = new Tank(Content.Load<Model>("enemy"), new Vector3(15, TerrainList[4].GetHeight(15, 118), 118),
