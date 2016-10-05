@@ -118,7 +118,7 @@ namespace TankAnimationVN
             if (distance.Length() > 6f)
             {
 
-                EnemyTank.Position = PlayerTank.Position + new Vector3(random.Next(-5, 5), 0, random.Next(-5, 5));
+                EnemyTank.Position = PlayerTank.Position + new Vector3(random.Next(-5, 5), 0, random.Next(-5, 5)); //Genero il carro nemico in un altro punto della mappa
                 
                 //if (TerrainList[4].GetHeight(EnemyTank.Position.X, EnemyTank.Position.Z) < 0.1f)
                     EnemyTank.Position = new Vector3(EnemyTank.Position.X, TerrainList[4].GetHeight(EnemyTank.Position.X, EnemyTank.Position.Z), EnemyTank.Position.Z);
@@ -174,7 +174,7 @@ namespace TankAnimationVN
             base.Draw(gameTime);
         }
 
-        public void TerrainDraw()                               //Generale griglia 3x3 dei terreni, il [4] è il terreno effettivo di gioco
+        public void TerrainDraw()                               //Genera la griglia 3x3 dei terreni, il [4] è il terreno effettivo di gioco
         {
             TerrainList[0].Draw(camera, Effect, -127, 127);
             TerrainList[1].Draw(camera, Effect, 0, 127);
@@ -187,7 +187,7 @@ namespace TankAnimationVN
             TerrainList[8].Draw(camera, Effect, 127, -127);
         }
 
-        public void PlayerTankControls(GameTime gameTime)
+        public void PlayerTankControls(GameTime gameTime)       //Gestione pressione tastiera per controllo tank
         {
             var delta = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
@@ -346,7 +346,7 @@ namespace TankAnimationVN
                             SFXManager.Play("Explosion");
                             Shooter.HitsCounter++;
                             Shooter.Bullet.IsFired = false;
-                            if (Shooter == PlayerTank)      //Gestione comparsa del carro nemico
+                            if (Shooter == PlayerTank)      //Gestione comparsa del carro nemico, viene generato nei dintorni del nostro carro in modo casuale
                             {
                                 int xCoord = random.Next(-5, 5);
                                 int zCoord = random.Next(-5, 5);
@@ -365,7 +365,7 @@ namespace TankAnimationVN
                                 bulletTimerCounter = 11000;
                                 enemySpeedUpCnt = 0;
                             }
-                            if(Shooter == EnemyTank)
+                            if(Shooter == EnemyTank) //Se ci ha colpito il nemico, resetto il timer per rallentare il prossimo colpo (altrimenti diventa un mitragliatore)
                             {
                                 bulletTimerCounter = 11000;
                                 enemySpeedUpCnt = 0;
@@ -428,27 +428,27 @@ namespace TankAnimationVN
 
         public void EnemyAutoFiring(GameTime gameTime, Tank Enemy) //Gestione AI carro nemico
         {
-            Vector3 directionOfEnemyTurret = Enemy.Bullet.CalculateBulletDirection(Enemy);
-            Vector3 directionOfFiring = (PlayerTank.Position - Enemy.Position);
-            float distance = directionOfFiring.Length();
+            Vector3 directionOfEnemyTurret = Enemy.Bullet.CalculateBulletDirection(Enemy); //Calcolo vettore direzione attuale della torretta nemica
+            Vector3 directionOfFiring = (PlayerTank.Position - Enemy.Position); //Calcolo vettore direzione di riferimento per sparare verso il giocatore
+            float distance = directionOfFiring.Length(); //Calcolo la distanza tra i due carri
 
-            MakeEnemyCanonRotation(Enemy, directionOfFiring, directionOfEnemyTurret, distance);
+            MakeEnemyCanonRotation(Enemy, directionOfFiring, directionOfEnemyTurret, distance); //Ruoto la torretta nemica per mantenere il giocatore a bersaglio (in orizzontale)
 
-            if (AllowFire(directionOfEnemyTurret, directionOfFiring, distance, playerIsOnFire))
+            if (AllowFire(directionOfEnemyTurret, directionOfFiring, distance, playerIsOnFire)) //Controllo di essere in traiettoria per sparare e se sono sotto una certa distanza
             {
-                playerIsOnFire = true;
+                playerIsOnFire = true; //Il giocatore è mirato correttamente
 
-                Enemy.EnemyFiringDirection = PlayerTank.Position - Enemy.Position;
+                Enemy.EnemyFiringDirection = PlayerTank.Position - Enemy.Position; //Ricontrollo la posizione del giocatore
                 if (Enemy.precEnemyFiringDirection == Vector3.Zero)
-                    Enemy.precEnemyFiringDirection = Enemy.EnemyFiringDirection;
+                    Enemy.precEnemyFiringDirection = Enemy.EnemyFiringDirection; //Se è la prima volta che miro, il valore precedente diventa quello attuale
 
-                MakeEnemyTurretRotation(Enemy, Enemy.EnemyFiringDirection, Enemy.precEnemyFiringDirection);
+                MakeEnemyTurretRotation(Enemy, Enemy.EnemyFiringDirection, Enemy.precEnemyFiringDirection); //Ruoto la torretta nemica in verticale per mirare il bersaglio
 
-                if (!Enemy.Bullet.IsFired && AllowFire(directionOfEnemyTurret, directionOfFiring, distance, playerIsOnFire) && bulletTimer.IsTimeEspired(gameTime))
+                if (!Enemy.Bullet.IsFired && AllowFire(directionOfEnemyTurret, directionOfFiring, distance, playerIsOnFire) && bulletTimer.IsTimeEspired(gameTime)) //A questo punto sparo
                 {
                     Enemy.BulletFire();
                     enemySpeedUpCnt++;
-                    if (enemySpeedUpCnt != (bulletTimerCounter/1000))
+                    if (enemySpeedUpCnt != (bulletTimerCounter/1000))            //Comandi per rallentare i colpi con timers (evitare effetto mitragliatore e lasciare scampo al giocatore)
                         bulletTimerCounter = bulletTimerCounter - 1000;
                     else
                     {
@@ -459,29 +459,29 @@ namespace TankAnimationVN
                     bulletTimer.Start();
                     SFXManager.Play("PlayerShot");
                 }
-                if (distance > 6f)
+                if (distance > 6f) //Se esco dalla distanza massima di bersaglio, azzero tutto
                 {
                     playerIsOnFire = false;
                     Enemy.precEnemyFiringDirection = Vector3.Zero;
                 }
 
-                Enemy.precEnemyFiringDirection = Enemy.EnemyFiringDirection;
+                Enemy.precEnemyFiringDirection = Enemy.EnemyFiringDirection; //Salvo la precedente direzione di bersaglio per effettuare il turno dopo un inclinazione incrementale rispetto a quella precedente
                 }
         }
 
-        public void MakeEnemyCanonRotation(Tank Enemy, Vector3 directionOfFiring, Vector3 directionOfEnemyTurret, float distance)
+        public void MakeEnemyCanonRotation(Tank Enemy, Vector3 directionOfFiring, Vector3 directionOfEnemyTurret, float distance) //Rotazione del cannone (orizzontale)
         {
-            directionOfEnemyTurret.Normalize();
+            directionOfEnemyTurret.Normalize();     //Normalizzo i vettori
             directionOfFiring.Normalize();
 
             float heightDiff = PlayerTank.Position.Y - Enemy.Position.Y;
-            float canonRotationAngle = (float)Math.Asin(heightDiff / distance);
+            float canonRotationAngle = (float)Math.Asin(heightDiff / distance); //Calcolo inclinazione con trigonometria
             Enemy.BoneTransform(10, Matrix.CreateRotationX(-canonRotationAngle));
         }
 
-        public void MakeEnemyTurretRotation(Tank Enemy, Vector3 directionOfFiring, Vector3 precDirectionOfFiring)
+        public void MakeEnemyTurretRotation(Tank Enemy, Vector3 directionOfFiring, Vector3 precDirectionOfFiring) //Rotazione della torretta (verticale)
         {
-            Vector2 EnemyFiringDirection2D = new Vector2(directionOfFiring.X, directionOfFiring.Z);
+            Vector2 EnemyFiringDirection2D = new Vector2(directionOfFiring.X, directionOfFiring.Z);                //Passo a vettori in 2D, una componente non ci serve
             Vector2 precEnemyFiringDirection2D = new Vector2(precDirectionOfFiring.X, precDirectionOfFiring.Z);
 
             float TurretRotationAngle = FindAngleBetweenTwoVectors(EnemyFiringDirection2D, precEnemyFiringDirection2D);
@@ -490,7 +490,7 @@ namespace TankAnimationVN
             Enemy.BoneTransform(9, Matrix.CreateRotationY(Enemy.turretRot));
         }
 
-        public bool AllowFire(Vector3 directionOfEnemyTurret, Vector3 directionOfFiring, float distance, bool playerIsOnFire)
+        public bool AllowFire(Vector3 directionOfEnemyTurret, Vector3 directionOfFiring, float distance, bool playerIsOnFire) //Stabilisce se il carro del giocatore è a distanza di bersaglio
         {
             directionOfEnemyTurret.Normalize();
             directionOfFiring.Normalize();
@@ -536,27 +536,27 @@ namespace TankAnimationVN
                 return true;
         }
 
-        public float NextInclination(Vector3 tankDirection)
+        public float NextInclination(Vector3 tankDirection) // Calcolo inclinazione lungo asse Y
         {
-            Vector3 tankDirectionNormalized = tankDirection * 0.14f;
+            Vector3 tankDirectionNormalized = tankDirection * 0.14f; //Moltiplico il vettore normalizzato per la distanza tra centro del carro e zona anteriore
 
-            float tankForwardHeight = TerrainList[4].GetHeight(PlayerTank.Position.X + tankDirectionNormalized.X, PlayerTank.Position.Z + tankDirectionNormalized.Z);
-            Vector3 tankForwardPos = new Vector3(PlayerTank.Position.X + tankDirectionNormalized.X, tankForwardHeight, PlayerTank.Position.Z + tankDirectionNormalized.Z);
-            Vector3 heigtdir = (tankForwardPos - PlayerTank.Position);
+            float tankForwardHeight = TerrainList[4].GetHeight(PlayerTank.Position.X + tankDirectionNormalized.X, PlayerTank.Position.Z + tankDirectionNormalized.Z); //calcolo l'altezza del punto in cui si trova la zona anteriore del carro
+            Vector3 tankForwardPos = new Vector3(PlayerTank.Position.X + tankDirectionNormalized.X, tankForwardHeight, PlayerTank.Position.Z + tankDirectionNormalized.Z); //vettore direzione futura carro (da origine riferimento)
+            Vector3 heigtdir = (tankForwardPos - PlayerTank.Position); //vettore direzione futura del carro, con origine dal centro del carro
             heigtdir.Normalize();
 
-            float inclination = (float)Math.Acos(Vector3.Dot(heigtdir, tankDirection));
+            float inclination = (float)Math.Acos(Vector3.Dot(heigtdir, tankDirection)); //Arcoseno del prodotto scalare tra i due vettori
 
-            if (heigtdir.Y > tankDirection.Y)
+            if (heigtdir.Y > tankDirection.Y) //inverto il segno per adattare tutte le direzioni
                 inclination = inclination * -1;
 
-            if (Double.IsNaN(inclination))
+            if (Double.IsNaN(inclination)) //nel caso l'angolo sia infinitesimo, non applico inclinazione
                 inclination = 0f;
 
             return inclination;
         }
 
-        public float ZInclination(Vector3 tankDirection)
+        public float ZInclination(Vector3 tankDirection) //Stesse considerazioni utilizzate per NextInclination, ovviamente i vettori in considerazioni sono quelli laterali
         {
             Vector3 tankDirectionNormalized = tankDirection * 0.025f;
 
@@ -576,7 +576,7 @@ namespace TankAnimationVN
             return inclination;
         }
 
-        public Vector3 CameraPosition(Vector3 tankDirection)
+        public Vector3 CameraPosition(Vector3 tankDirection) //Aggiorna la posizione della camera per stare sempre sul retro del carro nella direzione corretta
         {
             Vector3 tankDirectionNormalized = tankDirection * 0.5f;
 
@@ -586,7 +586,7 @@ namespace TankAnimationVN
             return tankBackPos;
         }
 
-        public Vector3 CalculateTankDirection(Tank tank)
+        public Vector3 CalculateTankDirection(Tank tank) //Calcola la direzione frontale in cui si dirige il carro
         {
             Vector3 scale;
             Quaternion rotation;
@@ -598,7 +598,7 @@ namespace TankAnimationVN
 
         }
 
-        public Vector3 CalculateTankPerpDir(Tank tank)
+        public Vector3 CalculateTankPerpDir(Tank tank) // Calcola il vettore con direzione perpendicolare alla direzione del carro
         {
             Vector3 scale;
             Quaternion rotation;
@@ -620,7 +620,7 @@ namespace TankAnimationVN
             return result;
         }
 
-        public void updateArrow()  //Funzione per debug direzione vettore
+        /*public void updateArrow()  //Funzione per debug direzione vettore
         {
             Vector3 scale;
             Quaternion rotation;
@@ -641,8 +641,8 @@ namespace TankAnimationVN
 
             Arrow.Position = PlayerTank.Position + new Vector3(0.05f, 0.19f, -0.055f);
 
-
-        }
+        
+        }*/
     }
 }
 

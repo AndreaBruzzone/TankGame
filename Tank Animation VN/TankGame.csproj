@@ -49,7 +49,6 @@
     <Compile Include="TankGame.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="TargetCamera.cs" />
     <Compile Include="Terrain.cs" />
     <Compile Include="TimeClass.cs" />
   </ItemGroup>
